@@ -144,7 +144,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                               : Column(
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
-                                    Icon(
+                                    FaIcon(
                                       // Icons.drag_handle,
                                       FontAwesomeIcons.angleUp,
                                       size: containerHeight > 700 ? 30 : 25,

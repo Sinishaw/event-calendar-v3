@@ -153,7 +153,7 @@ class DailyUserEventList extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          const Icon(FontAwesomeIcons.circleInfo),
+                          const FaIcon(FontAwesomeIcons.circleInfo),
                           Center(child: Text(AppLocalizations.of(context)!.confirmDeletion)),
                         ],
                       ),
@@ -163,7 +163,7 @@ class DailyUserEventList extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context, rootNavigator: true).pop(false);
                           },
-                          child: const Icon(
+                          child: const FaIcon(
                             FontAwesomeIcons.xmark,
                             size: 30,
                             color: Colors.grey,
@@ -173,7 +173,7 @@ class DailyUserEventList extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context, rootNavigator: true).pop(true);
                           },
-                          child: const Icon(
+                          child: const FaIcon(
                             FontAwesomeIcons.check,
                             size: 30,
                             color: Colors.green,

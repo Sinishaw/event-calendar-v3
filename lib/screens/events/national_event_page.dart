@@ -118,15 +118,6 @@ class _NationalEventsPageState extends State<NationalEventsPage> {
                             ListTile(
                               leading: Builder(
                                 builder: (context) {
-                                  IconData icon;
-                                  if (holidayList[index].holidayType == HolidayType.christian) {
-                                    icon = FontAwesomeIcons.cross;
-                                  } else if (holidayList[index].holidayType == HolidayType.muslim) {
-                                    icon = FontAwesomeIcons.moon;
-                                  } else {
-                                    icon = FontAwesomeIcons.starOfDavid;
-                                  }
-
                                   return Opacity(
                                     opacity: 0.7,
                                     child: Card(
@@ -134,7 +125,14 @@ class _NationalEventsPageState extends State<NationalEventsPage> {
                                         padding: const EdgeInsets.all(3.0),
                                         child: holidayList[index].holidayType != HolidayType.federal
                                             ? holidayList[index].holidayType != HolidayType.others
-                                                ? Icon(icon, size: 20.0, color: Theme.of(context).primaryColor)
+                                                ? FaIcon(
+                                                    holidayList[index].holidayType == HolidayType.christian
+                                                        ? FontAwesomeIcons.cross
+                                                        : holidayList[index].holidayType == HolidayType.muslim
+                                                            ? FontAwesomeIcons.moon
+                                                            : FontAwesomeIcons.starOfDavid,
+                                                    size: 20.0,
+                                                    color: Theme.of(context).primaryColor)
                                                 : Image.asset("assets/images/adey.png", width: 24, height: 24)
                                             : Image.asset("assets/images/flag_3d.png", width: 20, height: 20),
                                       ),

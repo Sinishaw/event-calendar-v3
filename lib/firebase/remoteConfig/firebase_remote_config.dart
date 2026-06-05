@@ -62,7 +62,15 @@ class FirebaseRemoteConfigV2 {
   DateTime? lastFetchTimeStamp;
   String? remoteConfig;
 
+  static bool _isFetching = false;
+
   static Future<void> fetchRemoteConfig() async {
+    if (_isFetching) {
+      debugPrint("------ Remote Config fetch already in progress, skipping...");
+      return;
+    }
+    _isFetching = true;
+
     debugPrint("------ Fetching all config for the app ...");
     final FirebaseRemoteConfig remoteConfig = FirebaseRemoteConfig.instance;
 
@@ -71,21 +79,36 @@ class FirebaseRemoteConfigV2 {
           fetchTimeout: const Duration(seconds: 5), minimumFetchInterval: const Duration(minutes: 1)));
       await initDefaultParameters(remoteConfig);
       await remoteConfig.fetchAndActivate();
-      if (remoteConfig.getString(Constants.CompaniesToFollow).isNotEmpty) {
-        Globals.prefs!.setString(Constants.CompaniesToFollow, remoteConfig.getString(Constants.CompaniesToFollow));
-        debugPrint("------ Companies to follow: ${remoteConfig.getString(Constants.CompaniesToFollow)}");
+      
+      // Cache the result to avoid multiple getString() calls
+      final companiesToFollow = remoteConfig.getString(Constants.CompaniesToFollow);
+      if (companiesToFollow.isNotEmpty) {
+        Globals.prefs!.setString(Constants.CompaniesToFollow, companiesToFollow);
+        debugPrint("------ Companies to follow: $companiesToFollow");
       }
     } on PlatformException catch (exception) {
-      debugPrint("------ Exception: ${exception.toString()}");
-      debugPrint("------ PrimaryColorLight ${remoteConfig.getString("primaryColorLight")}");
-      debugPrint(remoteConfig.getString(Constants.CompaniesToFollow).isNotEmpty.toString());
+      debugPrint("------ PlatformException: ${exception.toString()}");
+      
+      // Cache results before logging to avoid repeated calls
+      final primaryColorLight = remoteConfig.getString("primaryColorLight");
+      final companiesToFollow = remoteConfig.getString(Constants.CompaniesToFollow);
+      
+      debugPrint("------ PrimaryColorLight $primaryColorLight");
+      debugPrint("------ Companies to follow empty: ${companiesToFollow.isEmpty}");
     } catch (exception) {
-      debugPrint("------ Casual Exception ${exception.toString()}");
-      debugPrint("------ PrimaryColorLight ${remoteConfig.getString("primaryColorLight")}");
-      if (remoteConfig.getString(Constants.CompaniesToFollow).isNotEmpty) {
-        Globals.prefs!.setString(Constants.CompaniesToFollow, remoteConfig.getString(Constants.CompaniesToFollow));
-        debugPrint("------ Companies to follow exception: ${remoteConfig.getString(Constants.CompaniesToFollow)}");
+      debugPrint("------ General Exception: ${exception.toString()}");
+      
+      // Cache results before logging to avoid repeated calls
+      final primaryColorLight = remoteConfig.getString("primaryColorLight");
+      final companiesToFollow = remoteConfig.getString(Constants.CompaniesToFollow);
+      
+      debugPrint("------ PrimaryColorLight $primaryColorLight");
+      if (companiesToFollow.isNotEmpty) {
+        Globals.prefs!.setString(Constants.CompaniesToFollow, companiesToFollow);
+        debugPrint("------ Companies to follow exception: $companiesToFollow");
       }
+    } finally {
+      _isFetching = false;
     }
   }
 
