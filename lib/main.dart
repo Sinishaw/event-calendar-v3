@@ -25,7 +25,8 @@ import 'common/globals.dart';
 import 'configs/theme/theme_model.dart';
 import 'firebase/cloudMessaging/FcmHandler.dart';
 import 'firebase/firestore/firestore.dart';
-import 'firebase_options.dart';
+import 'firebase_options_dev.dart' as dev;
+import 'firebase_options_prod.dart' as prod;
 import 'screens/company/models/company_content_model.dart';
 import 'screens/events/models/notification_payload.dart';
 import 'screens/home/model/core_model.dart';
@@ -34,9 +35,15 @@ import 'shared/models/local_date_model.dart';
 import 'utils/firebase_logger.dart';
 import 'utils/utilities.dart';
 
+const String environment = String.fromEnvironment('ENV', defaultValue: 'dev');
+
+FirebaseOptions get firebaseOptions => environment == 'prod'
+    ? prod.DefaultFirebaseOptions.currentPlatform
+    : dev.DefaultFirebaseOptions.currentPlatform;
+
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint("----- Forground Notification Received.");
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: firebaseOptions);
   Globals.prefs ??= await SharedPreferences.getInstance();
   await NotificationService().initNotifications();
   try {
@@ -142,7 +149,7 @@ Future<void> registerUserIdInFirestore() async {
 Future<String> initializeApp() async {
   try {
     debugPrint("------ 1");
-    await Firebase.initializeApp().timeout(const Duration(seconds: 5)).then((value) async {
+    await Firebase.initializeApp(options: firebaseOptions).timeout(const Duration(seconds: 5)).then((value) async {
       debugPrint("------ 2");
       await Globals.initGlobals();
       debugPrint("------ 3");
@@ -208,7 +215,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Workmanager().initialize(callbackDispatcher, isInDebugMode: kDebugMode);
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    options: firebaseOptions,
   );
   NotificationService().initNotifications();
 
