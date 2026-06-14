@@ -56,7 +56,7 @@ class ThemeProvider extends ChangeNotifier {
 
       if (companyConfig.isNotEmpty) {
         Map<String, dynamic> remoteConfig = jsonDecode(companyConfig);
-        String companyDefaultTheme = remoteConfig[Constants.CompanyDefaultTheme];
+        String companyDefaultTheme = remoteConfig[Constants.CompanyDefaultTheme]?.toString() ?? 'Dark';
         Globals.prefs!.setString(Constants.ThemePreference, companyDefaultTheme);
         Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
       }

@@ -113,7 +113,7 @@ class CompanyConfig {
         defaultTheme = json != null ? json['defaultTheme'] : null,
         defaultLanguage = json != null ? json['defaultLanguage'] : null,
         leftMenu = json != null ? json['leftMenu'] : false,
-        menuBackgroundOpacity = json != null ? double.parse(json['menuBackgroundOpacity']) : 1.0,
+        menuBackgroundOpacity = json != null ? _parseDouble(json['menuBackgroundOpacity']) : 1.0,
         showBottomMenu = json != null ? json['showBottomMenu'] : false,
         reverseAdsAnimation = json != null ? json['reverseAdsAnimation'] : false,
         verticalAxisAdsAnimation = json != null ? json['verticalAxisAdsAnimation'] : true,
@@ -139,4 +139,14 @@ class CompanyConfig {
         profile = json != null ? CompanyProfile.fromJson(json['profile']) : null,
         termsAndPolicies = json != null ? TermsAndPolicies.fromJson(json['termsAndPolicies']) : null;
 //endregion
+}
+
+/// Safely parses [value] to a double regardless of whether it arrives
+/// from Remote Config JSON as a String ("0.8"), a double (0.8), or an int (1).
+double _parseDouble(dynamic value, {double fallback = 1.0}) {
+  if (value == null) return fallback;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? fallback;
+  return fallback;
 }
