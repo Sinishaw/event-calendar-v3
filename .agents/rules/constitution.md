@@ -36,6 +36,8 @@ artifacts or reuse existing ones — see Section 7.
 New piece of work (Section 7) → create an issue:
 
 - **Title:** short, descriptive, Title Case
+- **Label:** apply the label matching the branch `<type>` (see Section 12.1)
+- **Assignee:** the `gh`-authenticated user (`--assignee "@me"`)
 - **Body:**
 
 ```markdown
@@ -89,6 +91,8 @@ issue**. Add a comment instead:
    - `<issueNumber>`: the new issue's number
 
    Example: `feature/csv-export-reports_1`
+3. Add the issue to the linked Project board and set Status → `In progress`
+   (see Section 12.3) — work has now started.
 
 ### 4.2 Continuing work
 Stay on the existing branch. Don't create a new one even if its PR was
@@ -216,7 +220,9 @@ If committed, ask:
      MCP, then manual instructions — Section 11).
   3. PR body summarizes changes and references the issue (`Refs
      #<issueNumber>`, not auto-close).
-  4. Agent does not review/approve/merge — that's a human reviewer's job.
+  4. Update the linked issue's Project board Status → `Ready` (see Section
+     12.3), signaling the reviewer it's ready for review.
+  5. Agent does not review/approve/merge — that's a human reviewer's job.
 
 If a PR already exists and is open, don't duplicate it — note that new
 commits were added.
@@ -234,7 +240,51 @@ For all GitHub operations:
 
 ---
 
-## 12. Quick reference
+## 12. GitHub Project Board Integration
+
+Applies to issues/PRs in repos linked to a GitHub Projects (v2) board, e.g.
+[Flutter - Event Calendar V3](https://github.com/users/Sinishaw/projects/2).
+
+### 12.1 Labels (used in Section 3.1)
+Apply the label matching the branch `<type>`:
+
+| `<type>` | Label |
+|---|---|
+| `feature` | `feature` |
+| `fix` | `fix` |
+| `enhancement` | `enhancement` |
+| `refactor` | `refactor` |
+| `docs` | `documentation` |
+| other (`chore`, `test`, etc.) | `enhancement` (default) |
+
+If the label doesn't exist in the repo yet, create it first
+(`gh label create`).
+
+### 12.2 Assignee (used in Section 3.1)
+Always `--assignee "@me"` — resolves to whoever `gh auth login`
+authenticated, no hardcoded usernames.
+
+### 12.3 Project status transitions
+- **Issue created + branch checked out** (3.1/4.1) → add the issue to the
+  Project board, Status → `In progress`.
+- **PR opened** (10) → linked issue's Status → `Ready`.
+- **PR merged** → Status → `Done` for both the issue and the PR item, and
+  the issue should auto-close. This step happens outside any agent session
+  (a human merges later), so it is **not** performed by the agent — instead,
+  configure it once via the Project's built-in Workflows (⋯ → Workflows →
+  "Pull request merged" / "Item closed" → set Status: Done).
+
+### 12.4 One-time setup (per repo)
+1. `gh auth refresh -s project` (default `gh auth login` scopes don't cover
+   Projects v2).
+2. Ensure labels `documentation`, `enhancement`, `feature`, `fix`,
+   `refactor` exist in the repo.
+3. Confirm the repo is linked to the correct Project board, and enable the
+   "Done on merge/close" Workflows described in 12.3.
+
+---
+
+## 13. Quick reference
 
 | Situation | Issue | Branch | Plan file |
 |---|---|---|---|
