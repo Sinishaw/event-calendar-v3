@@ -1,6 +1,6 @@
-# event_calendar_v2
+# Event Calendar Version 3.0 
 
-A new Flutter project.
+Revised by the help of AI
 
 ## Getting Started
 
