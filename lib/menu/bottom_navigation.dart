@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../common/globals.dart';
@@ -11,40 +12,197 @@ class BottomNavigation extends StatefulWidget {
 }
 
 class _BottomNavigationState extends State<BottomNavigation> {
+  final List<IconData> _inactiveIcons = [
+    Icons.home_outlined,
+    Icons.grid_view_outlined,
+    Icons.transform_rounded,
+    Icons.note_alt_outlined,
+    Icons.menu_rounded,
+  ];
+
+  final List<IconData> _activeIcons = [
+    Icons.home_rounded,
+    Icons.grid_view_rounded,
+    Icons.transform_rounded,
+    Icons.note_alt_rounded,
+    Icons.menu_rounded,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      child: BottomNavigationBar(
-        showSelectedLabels: false,
-        selectedFontSize: 0,
-        unselectedFontSize: 0,
-        iconSize: Globals.deviceHeight! > 700 ? 28 : 24,
-        selectedItemColor: Theme.of(context).colorScheme.secondary,
-        unselectedItemColor: Theme.of(context).primaryColor,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: FittedBox(fit: BoxFit.contain, child: Icon(Icons.home, size: 30)),
-            label: 'Home',
+    final bool isIos = Theme.of(context).platform == TargetPlatform.iOS;
+    final Color primaryColor = Theme.of(context).primaryColor;
+    final Color secondaryColor = Theme.of(context).colorScheme.secondary;
+    final Color backgroundColor = Theme.of(context).bottomAppBarTheme.color ?? Theme.of(context).cardColor;
+
+    if (isIos) {
+      // iOS tab bar styling (translucent blur, docked, thin divider, outline/fill active state)
+      return ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              color: backgroundColor.withOpacity(0.85),
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor.withOpacity(0.2),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
+                height: 54,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(_activeIcons.length, (index) {
+                    final bool isSelected = Globals.selectedIndex == index;
+                    return IosNavItem(
+                      icon: isSelected ? _activeIcons[index] : _inactiveIcons[index],
+                      isSelected: isSelected,
+                      activeColor: secondaryColor,
+                      inactiveColor: primaryColor.withOpacity(0.5),
+                      onTap: () {
+                        widget.callback(index);
+                        setState(() {});
+                      },
+                    );
+                  }),
+                ),
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: FittedBox(fit: BoxFit.contain, child: Icon(Icons.grid_view_sharp)),
-            label: 'Year',
+        ),
+      );
+    } else {
+      // Android bottom bar styling (solid background, docked, elevation, M3 indicator)
+      return Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(_activeIcons.length, (index) {
+                final bool isSelected = Globals.selectedIndex == index;
+                return AndroidNavItem(
+                  icon: isSelected ? _activeIcons[index] : _inactiveIcons[index],
+                  isSelected: isSelected,
+                  activeColor: secondaryColor,
+                  inactiveColor: primaryColor.withOpacity(0.6),
+                  onTap: () {
+                    widget.callback(index);
+                    setState(() {});
+                  },
+                );
+              }),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: FittedBox(fit: BoxFit.contain, child: Icon(Icons.transform_rounded)),
-            label: 'Converter',
+        ),
+      );
+    }
+  }
+}
+
+class IosNavItem extends StatelessWidget {
+  final IconData icon;
+  final bool isSelected;
+  final Color activeColor;
+  final Color inactiveColor;
+  final VoidCallback onTap;
+
+  const IosNavItem({
+    super.key,
+    required this.icon,
+    required this.isSelected,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 54,
+          alignment: Alignment.center,
+          child: AnimatedScale(
+            scale: isSelected ? 1.12 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutBack,
+            child: Icon(
+              icon,
+              size: 26,
+              color: isSelected ? activeColor : inactiveColor,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: FittedBox(fit: BoxFit.contain, child: Icon(Icons.note)),
-            label: 'Archives',
+        ),
+      ),
+    );
+  }
+}
+
+class AndroidNavItem extends StatelessWidget {
+  final IconData icon;
+  final bool isSelected;
+  final Color activeColor;
+  final Color inactiveColor;
+  final VoidCallback onTap;
+
+  const AndroidNavItem({
+    super.key,
+    required this.icon,
+    required this.isSelected,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 64,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? activeColor.withOpacity(0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: isSelected ? activeColor : inactiveColor,
+                ),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: FittedBox(fit: BoxFit.contain, child: Icon(Icons.menu)),
-            label: 'More',
-          ),
-        ],
-        currentIndex: Globals.selectedIndex,
-        onTap: (value) => widget.callback(value),
+        ),
       ),
     );
   }

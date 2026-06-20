@@ -19,7 +19,7 @@ import 'package:event_calendar_v2/utils/firebase_logger.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:simple_gesture_detector/simple_gesture_detector.dart';
+
 
 import 'month_picker_dialog.dart';
 import 'task_and_event_dialog.dart';
@@ -48,7 +48,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
   // bool swipeLeft = false;
   // bool isTapFromMonthPicker = false;
   // Widget? child;
-  int _count = 0;
+
   // late bool isGeezNumbers;
 
   late BuildContext _context;
@@ -205,62 +205,54 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(flex: 0, child: headerNavigation()),
-        Expanded(flex: 0, child: monthHeader(context)),
-        Expanded(
-          flex: 1,
-          child: FutureBuilder(
-            future: getMonthEvents(context),
-            builder: (context, snapshot) => Stack(
-              children: [
-                swipeMonthSwitcher(context),
-                DraggableScrollableSheet(
-                  initialChildSize: 0.1,
-                  minChildSize: 0.1,
-                  maxChildSize: 1,
-                  builder: (BuildContext context, scrollController) {
-                    return Container(
-                      decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: Theme.of(context).primaryColor.withOpacity(0.5),
-                              width: 0.5,
-                            ),
-                          )),
-                      child: ListView.builder(
-                        itemCount: eventsList.length,
-                        controller: scrollController,
-                        itemBuilder: (context, index) {
-                          return index > 0
-                              ? Container(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
-                                  ),
-                                  child: eventsList[index].title != null
-                                      ? Padding(
-                                          padding: const EdgeInsets.only(bottom: 4.0),
-                                          child: _eventImportancePicker(context, eventsList[index]))
-                                      : const ListTile(
-                                          title: Text(""),
-                                        ))
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    FaIcon(
-                                      // Icons.drag_handle,
-                                      FontAwesomeIcons.angleUp,
-                                      size: containerHeight > 700 ? 30 : 25,
-                                    ),
-                                    Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        containerHeight = constraints.maxHeight;
+        cellWidth = constraints.maxWidth / 7.0;
+
+        final double screenHeight = MediaQuery.of(context).size.height;
+        final double spacing = screenHeight < 700 ? 1.0 : 3.0;
+        final double offsetFix = screenHeight > 800 ? 2.0 : 5.0;
+
+        // available height for month grid is containerHeight - navigationHeader (50) - monthHeader (27)
+        final double availableGridHeight = containerHeight - 50.0 - 27.0;
+
+        // cellHeight before offsetFix subtraction
+        cellHeight = (availableGridHeight + (6 * offsetFix) - (5 * spacing)) / 6.0;
+
+        return Column(
+          children: [
+            Expanded(flex: 0, child: headerNavigation()),
+            Expanded(flex: 0, child: monthHeader(context)),
+            Expanded(
+              flex: 1,
+              child: FutureBuilder(
+                future: getMonthEvents(context),
+                builder: (context, snapshot) => Stack(
+                  children: [
+                    swipeMonthSwitcher(context),
+                    DraggableScrollableSheet(
+                      initialChildSize: 0.1,
+                      minChildSize: 0.1,
+                      maxChildSize: 1,
+                      builder: (BuildContext context, scrollController) {
+                        return Container(
+                          decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Theme.of(context).primaryColor.withOpacity(0.5),
+                                  width: 0.5,
+                                ),
+                              )),
+                          child: ListView.builder(
+                            itemCount: eventsList.length,
+                            controller: scrollController,
+                            itemBuilder: (context, index) {
+                              return index > 0
+                                  ? Container(
                                       decoration: BoxDecoration(
                                         color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
-                                        borderRadius: const BorderRadius.only(
-                                          topRight: Radius.circular(20),
-                                          topLeft: Radius.circular(20),
-                                        ),
                                       ),
                                       child: eventsList[index].title != null
                                           ? Padding(
@@ -268,20 +260,45 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                                               child: _eventImportancePicker(context, eventsList[index]))
                                           : const ListTile(
                                               title: Text(""),
+                                            ))
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      children: [
+                                        FaIcon(
+                                          // Icons.drag_handle,
+                                          FontAwesomeIcons.angleUp,
+                                          size: screenHeight > 700 ? 30 : 25,
+                                        ),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
+                                            borderRadius: const BorderRadius.only(
+                                              topRight: Radius.circular(20),
+                                              topLeft: Radius.circular(20),
                                             ),
-                                    ),
-                                  ],
-                                );
-                        },
-                      ),
-                    );
-                  },
+                                          ),
+                                          child: eventsList[index].title != null
+                                              ? Padding(
+                                                  padding: const EdgeInsets.only(bottom: 4.0),
+                                                  child: _eventImportancePicker(context, eventsList[index]))
+                                              : const ListTile(
+                                                  title: Text(""),
+                                                ),
+                                        ),
+                                      ],
+                                    );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        )
-      ],
+              ),
+            )
+          ],
+        );
+      },
     );
   }
 
@@ -313,13 +330,15 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
       todayOffset = 0;
     }
 
-    int monthContainerOffsetFix = containerHeight > 800 ? 2 : 5;
+    final double screenHeight = MediaQuery.of(context).size.height;
+    double monthContainerOffsetFix = screenHeight > 800 ? 2.0 : 5.0;
     cellHeight -= monthContainerOffsetFix;
     return GridView.count(
       crossAxisCount: 7,
       childAspectRatio: cellWidth / cellHeight,
-      mainAxisSpacing: containerHeight < 700 ? 1 : 3,
+      mainAxisSpacing: screenHeight < 700 ? 1 : 3,
       crossAxisSpacing: 1.0,
+      physics: const NeverScrollableScrollPhysics(),
       children: List.generate(42, (index) {
         bool isSunday = false;
         if (weekStartDay == 'Mon') {
@@ -578,7 +597,6 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     isNavigationStart = true;
     isTapFromMonthPicker = true;
     MonthGlobals.etShowingMonth = month;
-    _count++;
     jumpToEtMonth();
     adjustSundayOffset();
 
