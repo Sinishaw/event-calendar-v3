@@ -338,6 +338,25 @@ class _SettingPageState extends State<SettingPage> {
     }
   }
 
+  /// Maps ISO language codes and alternate names (as stored by Remote Config
+  /// company onboarding) to the display names used by the dropdown items.
+  static const Map<String, String> _langCodeToDisplayName = {
+    'am': 'አማርኛ',
+    'Amharic': 'አማርኛ',
+    'amharic': 'አማርኛ',
+    'or': 'Oromiffa',
+    'Oromiffa': 'Oromiffa',
+    'oromiffa': 'Oromiffa',
+    'te': 'ትግርኛ',
+    'Tigrinya': 'ትግርኛ',
+    'tigrinya': 'ትግርኛ',
+    'en': 'English',
+    'English': 'English',
+    'english': 'English',
+    'አማርኛ': 'አማርኛ',
+    'ትግርኛ': 'ትግርኛ',
+  };
+
   _initLanguageOptions() {
     for (var element in Globals.languagesNameValue) {
       debugPrint("------ Language Option: $element");
@@ -345,20 +364,40 @@ class _SettingPageState extends State<SettingPage> {
 
     try {
       _languagePreference = _getLanguage();
-      _languageDropdownValue = _languagePreference;
+
+      // Normalise: stored value may be an ISO code ("am") or an alternate
+      // name ("Amharic") from Remote Config — map it to the dropdown display name.
+      final String normalised =
+          _langCodeToDisplayName[_languagePreference] ?? _languagePreference ?? 'One';
+
+      // If normalised differs from what was stored, persist the corrected value
+      // so subsequent launches don't hit the same mismatch.
+      if (normalised != _languagePreference && normalised != 'One') {
+        Globals.prefs!.setString(Constants.LanguagePreference, normalised);
+        _languagePreference = normalised;
+      }
+
+      _languageDropdownValue = _languageOptions.contains(normalised) ? normalised : 'One';
+
       if (Globals.languagesNameValue.isNotEmpty) {
         _languageOptions.clear();
         _languageOptions.add("One");
         for (var element in Globals.languagesNameValue) {
           _languageOptions.add(element["name"]);
         }
+        // Re-validate after list is built
+        _languageDropdownValue =
+            _languageOptions.contains(normalised) ? normalised : 'One';
       } else {
         ///TODO: Get available language options from json file that comes from firebase remote config
         _languageOptions = ["አማርኛ", "Oromiffa", "ትግርኛ", "English"];
+        _languageDropdownValue =
+            _languageOptions.contains(normalised) ? normalised : _languageOptions.first;
       }
     } catch (e) {
       debugPrint(e.toString());
       _languageOptions = ["አማርኛ", "Oromiffa", "ትግርኛ", "English"];
+      _languageDropdownValue = _languageOptions.first;
     }
   }
 
