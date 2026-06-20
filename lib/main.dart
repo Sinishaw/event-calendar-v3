@@ -463,6 +463,7 @@ class _ContainerPageState extends State<ContainerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
+      extendBody: false,
       body: Center(child: _getSelectedWidget(Globals.displayingIndex)),
       drawer: Globals.setting.leftMenu!
           ? SideMenu(
