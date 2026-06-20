@@ -19,7 +19,7 @@ import 'package:event_calendar_v2/utils/firebase_logger.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:simple_gesture_detector/simple_gesture_detector.dart';
+
 
 import 'month_picker_dialog.dart';
 import 'task_and_event_dialog.dart';
@@ -48,16 +48,18 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
   // bool swipeLeft = false;
   // bool isTapFromMonthPicker = false;
   // Widget? child;
-  int _count = 0;
+
   // late bool isGeezNumbers;
 
   late BuildContext _context;
+  late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
     _context = context;
+    _pageController = PageController(initialPage: 600);
 
     ///TODO: Take these initialization to a global level, where the app starts for the first time
     initMonthMatrix();
@@ -78,7 +80,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ///Notify parent to change month image
       widget.monthNavigationListenerCallback!();
-      child = getMonthGrid(cellHeight, cellWidth, getShowingMonthSequence(), _context);
+      child = getMonthGrid(cellHeight, cellWidth, getShowingMonthSequence(), _context, year: MonthGlobals.etShowingYear!, month: MonthGlobals.etShowingMonth!);
       containerHeight = MediaQuery.of(context).size.height;
 
       Utility.showTopicSubscriptionListDialog(_context, dismissible: false);
@@ -88,6 +90,109 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
       ///TODO: Commented
       // _initQuickStartOptions(_context);
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  LocalDate _getMonthYearForPage(int page) {
+    int diff = page - 600;
+    int nowYear = MonthGlobals.etNow!.year!;
+    int nowMonth = MonthGlobals.etNow!.month!;
+    // Offset by 10,000 years to prevent negative values in division/modulo
+    int totalMonths = ((nowYear + 10000) * 13) + (nowMonth - 1) + diff;
+    int targetYear = (totalMonths ~/ 13) - 10000;
+    int targetMonth = (totalMonths % 13) + 1;
+    return LocalDate.date(targetYear, targetMonth, 1);
+  }
+
+  List<Day> _getMonthSequenceFor(int year, int month) {
+    List<Day> monthArray = List.generate(42, (_) => Day());
+    
+    LocalDate gcDate = MonthModel.toGc(year: year, month: month, day: 1)!;
+    DateTime gcDateTime = DateTime(gcDate.year!, gcDate.month!, gcDate.day!);
+    int startIndex = gcDateTime.weekday - 1;
+    
+    // Adjust Sunday Offset
+    String weekStartDay = Utility.getWeekStartDay();
+    if (weekStartDay == 'Sun') {
+      if (startIndex < 6) {
+        startIndex = startIndex + 1;
+      } else {
+        startIndex = 0;
+      }
+    }
+    
+    int index = startIndex;
+    int etDayLength = month < 13
+        ? 30
+        : MonthModel.isLeapYear(year)
+            ? 6
+            : 5;
+
+    ///From 1st to end of current month
+    for (int day = 1; day <= etDayLength; day++, index++) {
+      monthArray[index].etDay = day;
+      monthArray[index].geezDay = GeezNumbers.geezNumbers[day - 1];
+    }
+
+    ///Start of next month days
+    for (int day = 1; index < monthArray.length; day++, index++) {
+      monthArray[index].etDay = day;
+      if (day == 31) day = 1;
+      monthArray[index].geezDay = GeezNumbers.geezNumbers[day - 1];
+      
+      int nextMonth = month + 1;
+      int nextYear = year;
+      if (nextMonth > 13) {
+        nextMonth = 1;
+        nextYear = year + 1;
+      }
+      int nextMonthLength = nextMonth < 13
+          ? 30
+          : MonthModel.isLeapYear(nextYear)
+              ? 6
+              : 5;
+              
+      if (month == 12 && index > 34 && day > nextMonthLength) {
+        day = 1;
+        monthArray[index].etDay = day;
+        monthArray[index].geezDay = GeezNumbers.geezNumbers[day - 1];
+      }
+
+      if (month == 13 && day < 31) {
+        monthArray[index].etDay = day;
+        monthArray[index].geezDay = GeezNumbers.geezNumbers[day - 1];
+      }
+    }
+
+    ///End of previous month days
+    int prevMonth = month - 1;
+    int prevYear = year;
+    if (prevMonth == 0) {
+      prevMonth = 13;
+      prevYear = year - 1;
+    }
+    int prevMonthLength = prevMonth < 13
+        ? 30
+        : MonthModel.isLeapYear(prevYear)
+            ? 6
+            : 5;
+
+    for (int day = prevMonthLength, i = startIndex - 1; i >= 0; i--, day--) {
+      if (month > 1) {
+        monthArray[i].etDay = day;
+        monthArray[i].geezDay = GeezNumbers.geezNumbers[day - 1];
+      } else {
+        monthArray[i].geezDay = "0";
+      }
+    }
+
+    getGcMonthSequence(startIndex, LocalDate.date(year, month, 1), gcDate, monthArray);
+    return monthArray;
   }
 
   @override
@@ -197,16 +302,26 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     );
   }
 
-  Widget getMonthGrid(cellHeight, cellWidth, List<Day> monthArray, BuildContext context) {
+  Widget getMonthGrid(cellHeight, cellWidth, List<Day> monthArray, BuildContext context, {required int year, required int month}) {
     ///Based on week start day (Mon or Sun), add 1 offset if day start by Sun or zero
     String weekStartDay = Utility.getWeekStartDay();
     int todayOffset = 0;
 
-    debugPrint("------ Today's Index: ${MonthGlobals.showingMonthStartIndex}");
+    // Calculate activeStartIndex for this specific month/year
+    LocalDate tempGcDate = MonthModel.toGc(year: year, month: month, day: 1)!;
+    DateTime tempGcDateTime = DateTime(tempGcDate.year!, tempGcDate.month!, tempGcDate.day!);
+    int activeStartIndex = tempGcDateTime.weekday - 1;
+    if (weekStartDay == 'Sun') {
+      if (activeStartIndex < 6) {
+        activeStartIndex = activeStartIndex + 1;
+      } else {
+        activeStartIndex = 0;
+      }
+    }
 
     ///Adjusting for sunday if weekday starts @ Sunday or else
     if (weekStartDay == 'Sun') {
-      if (MonthGlobals.showingMonthStartIndex != 0) {
+      if (activeStartIndex != 0) {
         todayOffset = 1;
       } else {
         todayOffset = -6;
@@ -231,19 +346,19 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
         } else {
           isSunday = index % 7 == 0 ? true : false;
         }
-        bool isToday = (MonthGlobals.etShowingYear == MonthGlobals.etNowYear &&
-            MonthGlobals.etShowingMonth == MonthGlobals.etNowMonth &&
+        bool isToday = (year == MonthGlobals.etNowYear &&
+            month == MonthGlobals.etNowMonth &&
             index == MonthGlobals.todayIndex! + todayOffset);
         Color? cellColor;
 
-        int monthLength = MonthGlobals.etShowingMonth! < 13
+        int monthLength = month < 13
             ? 30
-            : MonthModel.isLeapYear(MonthGlobals.etShowingYear)
+            : MonthModel.isLeapYear(year)
                 ? 6
                 : 5;
 
-        bool isPrevMonthDays = index < MonthGlobals.showingMonthStartIndex! ? true : false;
-        bool isNextMonthDays = index > MonthGlobals.showingMonthStartIndex! + (monthLength - 1) ? true : false;
+        bool isPrevMonthDays = index < activeStartIndex ? true : false;
+        bool isNextMonthDays = index > activeStartIndex + (monthLength - 1) ? true : false;
         bool isPrevOrNextMonthDays = isPrevMonthDays || isNextMonthDays;
         double etDayFontSize = isGeezNumbers ? 18 : 20;
 
@@ -254,7 +369,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
         }
         if (isPrevOrNextMonthDays && !isSunday) {
           ///Prev and Next month days color except Meskerem Prev days (Which are empty by default)
-          cellColor = (MonthGlobals.etShowingMonth! > 1 || isNextMonthDays) ? Colors.grey : Colors.transparent;
+          cellColor = (month > 1 || isNextMonthDays) ? Colors.grey : Colors.transparent;
         } else if (isPrevOrNextMonthDays && isSunday) {
           cellColor = Colors.redAccent.withOpacity(0.3);
         }
@@ -274,7 +389,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
             } else if (item.eD == monthArray[index].etDay && item.repeatOption == NotificationRepeatOption.weekly) {
               /// Weekly notification shows only on the day they are scheduled to prevent view distruption
               hasEvent = true;
-              if (MonthGlobals.etShowingMonth! == item.eM! + 1 && MonthGlobals.etShowingYear! == item.eY) {
+              if (month == item.eM! + 1 && year == item.eY) {
                 if (!isNextMonthDays) {
                   eventIndicatorColor = Theme.of(context).colorScheme.secondary;
                 }
@@ -285,28 +400,20 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
         }
 
         ///Month grid cells which have on click effect except Pagume and Meskerem special cases
-        bool clickable = (MonthGlobals.etShowingMonth! < 13 ||
-            (MonthGlobals.etShowingMonth == 13 && index < MonthGlobals.showingMonthStartIndex! + monthLength + 30));
+        bool clickable = (month < 13 ||
+            (month == 13 && index < activeStartIndex + monthLength + 30));
 
         return InkWell(
           borderRadius: const BorderRadius.all(Radius.circular(20)),
           onTap: () {
             ///Meskerem is included to prevent on tap on previous days
-            if (!clickable || (MonthGlobals.etShowingMonth == 1 && isPrevMonthDays)) return;
-            if (index < MonthGlobals.showingMonthStartIndex!) {
-              isTapFromMonthPicker = true;
-              prevEtMonth();
-              _count++;
-              setState(() {
-                child = getMonthGrid(cellHeight, cellWidth, getShowingMonthSequence(), context);
-              });
-            } else if (index > MonthGlobals.showingMonthStartIndex! + (monthLength - 1)) {
-              isTapFromMonthPicker = true;
-              nextEtMonth();
-              _count++;
-              setState(() {
-                child = getMonthGrid(cellHeight, cellWidth, getShowingMonthSequence(), context);
-              });
+            if (!clickable || (month == 1 && isPrevMonthDays)) return;
+            if (index < activeStartIndex) {
+              isTapFromMonthPicker = false;
+              _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+            } else if (index > activeStartIndex + (monthLength - 1)) {
+              isTapFromMonthPicker = false;
+              _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
             }
             showDialog(
               context: context,
@@ -414,67 +521,30 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     );
   }
 
-  AnimatedSwitcher swipeMonthSwitcher(BuildContext context) {
-    return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 600),
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          if (isTapFromMonthPicker) {
-            return ScaleTransition(
-              scale: animation,
-              child: child,
-            );
-          }
-          final inAnimation = Tween<Offset>(
-                  begin: swipeLeft ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0), end: const Offset(0.0, 0.0))
-              .animate(animation);
-          final outAnimation = Tween<Offset>(
-                  begin: swipeLeft ? const Offset(-1.0, 0.0) : const Offset(1.0, 0.0), end: const Offset(0.0, 0.0))
-              .animate(animation);
-          print("COUNT: $_count");
-          if (child.key == ValueKey(_count)) {
-            return SlideTransition(
-              position: inAnimation,
-              child: Center(child: child),
-            );
-          } else {
-            return SlideTransition(
-              position: outAnimation,
-              child: Center(child: child),
-            );
-          }
-        },
-        child: simpleGestureDetector(context));
-  }
-
-  SimpleGestureDetector simpleGestureDetector(BuildContext context) {
-    return SimpleGestureDetector(
-      key: ValueKey<int>(_count),
-      onHorizontalSwipe: (direction) {
+  Widget swipeMonthSwitcher(BuildContext context) {
+    return PageView.builder(
+      controller: _pageController,
+      onPageChanged: (page) {
         isTapFromMonthPicker = false;
+        final date = _getMonthYearForPage(page);
         setState(() {
-          _count++;
-          if (direction == SwipeDirection.left) {
-            isNavigationStart = true;
-            swipeLeft = true;
-            debugPrint("------ Swipe Left");
-            nextEtMonth();
-          } else {
-            isNavigationStart = true;
-            swipeLeft = false;
-            debugPrint("------ Swipe Right");
-            prevEtMonth();
-          }
+          MonthGlobals.etShowingYear = date.year;
+          MonthGlobals.etShowingMonth = date.month;
 
-          ///Notify parent to change month image
+          // Adjust showingMonthStartIndex for globals
+          LocalDate gcDate = MonthModel.toGc(year: date.year!, month: date.month!, day: 1)!;
+          DateTime gcDateTime = DateTime(gcDate.year!, gcDate.month!, gcDate.day!);
+          MonthGlobals.showingMonthStartIndex = gcDateTime.weekday - 1;
+          adjustSundayOffset();
+
           widget.monthNavigationListenerCallback!();
         });
       },
-      swipeConfig: const SimpleSwipeConfig(
-        verticalThreshold: 20.0,
-        horizontalThreshold: 20.0,
-        swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct,
-      ),
-      child: getMonthGrid(cellHeight, cellWidth, getShowingMonthSequence(), context),
+      itemBuilder: (context, index) {
+        final date = _getMonthYearForPage(index);
+        final monthArray = _getMonthSequenceFor(date.year!, date.month!);
+        return getMonthGrid(cellHeight, cellWidth, monthArray, context, year: date.year!, month: date.month!);
+      },
     );
   }
 
@@ -493,13 +563,8 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
           IconButton(
             icon: Icon(Icons.arrow_back_ios, color: c),
             onPressed: () {
-              setState(() {
-                isNavigationStart = true;
-                prevEtMonth();
-
-                ///Notify parent to change month image
-                widget.monthNavigationListenerCallback!();
-              });
+              isTapFromMonthPicker = false;
+              _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
             },
           ),
           Expanded(
@@ -518,14 +583,9 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               Icons.arrow_forward_ios,
               color: c,
             ),
-            onPressed: () async {
-              setState(() {
-                isNavigationStart = true;
-                nextEtMonth();
-
-                ///Notify parent to change month image
-                widget.monthNavigationListenerCallback!();
-              });
+            onPressed: () {
+              isTapFromMonthPicker = false;
+              _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
             },
           )
         ],
@@ -537,12 +597,14 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     isNavigationStart = true;
     isTapFromMonthPicker = true;
     MonthGlobals.etShowingMonth = month;
-    _count++;
     jumpToEtMonth();
-    setState(() {
-      adjustSundayOffset();
-      child = getMonthGrid(cellHeight, cellWidth, getShowingMonthSequence(), context);
-    });
+    adjustSundayOffset();
+
+    int diff = (MonthGlobals.etShowingYear! - MonthGlobals.etNow!.year!) * 13 + (MonthGlobals.etShowingMonth! - MonthGlobals.etNow!.month!);
+    int targetPage = 600 + diff;
+    _pageController.jumpToPage(targetPage);
+
+    setState(() {});
   }
 
   _getEventDateTimeDetail(NotificationPayload payload) {
