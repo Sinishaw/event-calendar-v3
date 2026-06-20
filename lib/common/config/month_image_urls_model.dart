@@ -25,7 +25,7 @@ class MonthImageUrls {
       this.pgUrl});
 
   MonthImageUrls.fromJson(Map<String, dynamic>? json)
-      : id = json != null ? json['id'] : 0,
+      : id = json != null ? _parseInt(json['id']) : 0,
         thm = json != null ? json['thm'] : null,
         dsc = json != null ? json['dsc'] : null,
         published = json != null ? json['published'] : false,
@@ -62,4 +62,14 @@ class MonthImageUrls {
         'nhUrl': nhUrl,
         'pgUrl': pgUrl
       };
+}
+
+/// Safely parses [value] to an [int] regardless of whether it arrives
+/// from Remote Config JSON as a String ("5"), an int (5), or null.
+int? _parseInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
 }
