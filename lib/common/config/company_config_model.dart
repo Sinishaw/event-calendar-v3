@@ -24,6 +24,8 @@ class CompanyConfig {
     this.primaryColorDark = "#F7D031",
     this.accentColorLight = "#c75450",
     this.accentColorDark = "#c75450",
+    this.holidayColorLight = "#FF5252",
+    this.holidayColorDark = "#FF5252",
     // this.monthHeaderColor,
     // this.weekHeaderRowColor,
     // this.daysColor,
@@ -54,7 +56,7 @@ class CompanyConfig {
   ///Horizontal Bottom, Vertical left/right
   ///Number of contents at a time
   ///Animation speed and type based on ad count
-  String? primaryColorLight, primaryColorDark, accentColorLight, accentColorDark;
+  String? primaryColorLight, primaryColorDark, accentColorLight, accentColorDark, holidayColorLight, holidayColorDark;
   // String? monthHeaderColor, weekHeaderRowColor, daysColor, todayColor, todaySundayColor, prevMonthDaysColor;
   // String? nextMonthDaysColor, eventIndicatorColor, menuIconColor, menuTextColor;
   String? subscriptionPackage, logoLocation, adsScreenLocation;
@@ -85,6 +87,8 @@ class CompanyConfig {
         'primaryColorDark': primaryColorDark ?? "",
         'accentColorLight': accentColorLight ?? "",
         'accentColorDark': accentColorDark ?? "",
+        'holidayColorLight': holidayColorLight ?? "",
+        'holidayColorDark': holidayColorDark ?? "",
         // 'monthHeaderColor': monthHeaderColor != null ? monthHeaderColor : "",
         // 'weekHeaderRowColor': weekHeaderRowColor != null ? weekHeaderRowColor : "",
         // 'daysColor': daysColor != null ? daysColor : "",
@@ -122,6 +126,8 @@ class CompanyConfig {
         primaryColorDark = json != null ? json['primaryColorDark'] : null,
         accentColorLight = json != null ? json['accentColorLight'] : null,
         accentColorDark = json != null ? json['accentColorDark'] : null,
+        holidayColorLight = json != null ? json['holidayColorLight'] : null,
+        holidayColorDark = json != null ? json['holidayColorDark'] : null,
         // monthHeaderColor = json != null ? json['monthHeaderColor'] : null,
         // weekHeaderRowColor = json != null ? json['weekHeaderRowColor'] : null,
         // daysColor = json != null ? json['daysColor'] : null,
