@@ -57,97 +57,242 @@ class _InputBasedConverterDialogState extends State<InputBasedConverterDialog> w
     _yearTextController.text = "$_year";
   }
 
-  _getConversionOptions() {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+
+    return Container(
+      margin: MediaQuery.of(context).viewInsets,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ScaleTransition(
+          scale: scaleAnimation,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Material(
+                  color: theme.dialogBackgroundColor,
+                  borderRadius: BorderRadius.circular(20),
+                  child: SizedBox(
+                    width: Globals.deviceWidth,
+                    child: Column(children: [
+                      _buildConversionToggle(theme, isDark, primaryColor),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Divider(
+                          color: primaryColor.withOpacity(0.12),
+                          height: 1,
+                        ),
+                      ),
+                      _buildInputRow(theme, isDark, primaryColor),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Divider(
+                          color: primaryColor.withOpacity(0.12),
+                          height: 1,
+                        ),
+                      ),
+                      _buildConvertButton(theme, primaryColor),
+                    ]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConversionToggle(ThemeData theme, bool isDark, Color primaryColor) {
+    final isFromEthiopian = calendarType == CalendarType.Ethiopian;
+    final pillBg = isDark
+        ? Colors.white.withOpacity(0.08)
+        : primaryColor.withOpacity(0.08);
+
     return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: GestureDetector(
-              onTap: calendarType == CalendarType.Ethiopian
-                  ? null
-                  : () {
-                      setState(() {
-                        try {
-                          _day = int.parse(_dayTextController.text);
-                          _month = int.parse(_monthTextController.text);
-                          _year = int.parse(_yearTextController.text);
-                          _convertInputDate(calendarType);
-                          calendarType = CalendarType.Ethiopian;
-                        } catch (e) {
-                          Globals.showSnack(
-                            context: context,
-                            type: SnackMessageType.error,
-
-                            ///TODO: Get message from language config file
-                            message: "Please enter a valid date.",
-                          );
-                          print(e);
-                        }
-                      });
-                    },
-              child: Card(
-                elevation: calendarType == CalendarType.Gregorian ? 10 : 0,
-                shadowColor: Theme.of(context).primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                child: Container(
-                  height: 50,
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: pillBg,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            /// "From Ethiopian" pill
+            Expanded(
+              child: GestureDetector(
+                onTap: calendarType == CalendarType.Ethiopian
+                    ? null
+                    : () {
+                        setState(() {
+                          try {
+                            _day = int.parse(_dayTextController.text);
+                            _month = int.parse(_monthTextController.text);
+                            _year = int.parse(_yearTextController.text);
+                            _convertInputDate(calendarType);
+                            calendarType = CalendarType.Ethiopian;
+                          } catch (e) {
+                            Globals.showSnack(
+                              context: context,
+                              type: SnackMessageType.error,
+                              message: "Please enter a valid date.",
+                            );
+                            print(e);
+                          }
+                        });
+                      },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
                   decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: const BorderRadius.all(Radius.circular(15))),
-                  child: Center(child: Text("${AppLocalizations.of(context)!.fromEthiopia}")),
+                    color: isFromEthiopian ? primaryColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: isFromEthiopian
+                        ? [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Center(
+                    child: Text(
+                      "${AppLocalizations.of(context)!.fromEthiopia}",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isFromEthiopian
+                            ? Colors.white
+                            : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          // VerticalDivider(),
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-            child:
-                calendarType == CalendarType.Gregorian ? const Icon(Icons.arrow_back) : const Icon(Icons.arrow_forward),
-          ),
-          Expanded(
-            flex: 1,
-            child: GestureDetector(
-              onTap: calendarType == CalendarType.Gregorian
-                  ? null
-                  : () {
-                      setState(() {
-                        try {
-                          _day = int.parse(_dayTextController.text);
-                          _month = int.parse(_monthTextController.text);
-                          _year = int.parse(_yearTextController.text);
-                          _convertInputDate(calendarType);
-                          calendarType = CalendarType.Gregorian;
-                        } catch (e) {
-                          print(e);
-                          Globals.showSnack(
-                            context: context,
-                            type: SnackMessageType.error,
 
-                            ///TODO: Get message from language config file
-                            message: "Please enter a valid date.",
-                          );
-                        }
-                      });
-                    },
-              child: Card(
-                elevation: calendarType == CalendarType.Ethiopian ? 5 : 0,
-                shadowColor: Theme.of(context).primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                child: Container(
-                  height: 50,
+            /// Swap direction icon
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(
+                Icons.swap_horiz_rounded,
+                size: 18,
+                color: primaryColor.withOpacity(0.5),
+              ),
+            ),
+
+            /// "From Gregorian" pill
+            Expanded(
+              child: GestureDetector(
+                onTap: calendarType == CalendarType.Gregorian
+                    ? null
+                    : () {
+                        setState(() {
+                          try {
+                            _day = int.parse(_dayTextController.text);
+                            _month = int.parse(_monthTextController.text);
+                            _year = int.parse(_yearTextController.text);
+                            _convertInputDate(calendarType);
+                            calendarType = CalendarType.Gregorian;
+                          } catch (e) {
+                            print(e);
+                            Globals.showSnack(
+                              context: context,
+                              type: SnackMessageType.error,
+                              message: "Please enter a valid date.",
+                            );
+                          }
+                        });
+                      },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
                   decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: const BorderRadius.all(Radius.circular(15))),
-                  child: const Center(child: Text("From Gregorian")),
+                    color: !isFromEthiopian ? primaryColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: !isFromEthiopian
+                        ? [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Center(
+                    child: Text(
+                      "From Gregorian",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: !isFromEthiopian
+                            ? Colors.white
+                            : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputRow(ThemeData theme, bool isDark, Color primaryColor) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: _buildInputField(
+              label: calendarType == CalendarType.Ethiopian
+                  ? "${AppLocalizations.of(context)!.date}"
+                  : "Day",
+              controller: _dayTextController,
+              maxLength: 2,
+              theme: theme,
+              isDark: isDark,
+              primaryColor: primaryColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: _buildInputField(
+              label: calendarType == CalendarType.Ethiopian
+                  ? "${AppLocalizations.of(context)!.month}"
+                  : "Month",
+              controller: _monthTextController,
+              maxLength: 2,
+              theme: theme,
+              isDark: isDark,
+              primaryColor: primaryColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 4,
+            child: _buildInputField(
+              label: calendarType == CalendarType.Ethiopian
+                  ? "${AppLocalizations.of(context)!.year}"
+                  : "Year",
+              controller: _yearTextController,
+              maxLength: 4,
+              theme: theme,
+              isDark: isDark,
+              primaryColor: primaryColor,
             ),
           ),
         ],
@@ -155,97 +300,171 @@ class _InputBasedConverterDialogState extends State<InputBasedConverterDialog> w
     );
   }
 
-  _getInputRow() {
-    return Card(
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(calendarType == CalendarType.Ethiopian ? "${AppLocalizations.of(context)!.date}" : "Day"),
-                TextField(
-                  controller: _dayTextController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                  decoration: InputDecoration(
-                    // hintText: widget.calendarType == CalendarType.Ethiopian ? "ቀን" : "Day",
-                    suffixIcon: IconButton(
-                      onPressed: () => _dayTextController.clear(),
-                      icon: const Icon(
-                        Icons.clear,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                  // onChanged: (value) => eventTitle = value,
-                ),
-              ],
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    required int maxLength,
+    required ThemeData theme,
+    required bool isDark,
+    required Color primaryColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: <TextInputFormatter>[
+            LengthLimitingTextInputFormatter(maxLength),
+          ],
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: theme.textTheme.bodyLarge?.color,
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: isDark
+                ? Colors.white.withOpacity(0.06)
+                : primaryColor.withOpacity(0.04),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: primaryColor.withOpacity(0.15),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: primaryColor.withOpacity(0.15),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: primaryColor,
+                width: 1.5,
+              ),
+            ),
+            suffixIcon: IconButton(
+              onPressed: () => controller.clear(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(
+                Icons.clear_rounded,
+                size: 16,
+                color: primaryColor.withOpacity(0.5),
+              ),
             ),
           ),
-          const VerticalDivider(),
-          Expanded(
-            flex: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(calendarType == CalendarType.Ethiopian ? "${AppLocalizations.of(context)!.month}" : "Month"),
-                TextField(
-                  controller: _monthTextController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                  decoration: InputDecoration(
-                    // hintText: widget.calendarType == CalendarType.Ethiopian ? "ወር" : "Month",
-                    suffixIcon: IconButton(
-                      onPressed: () => _monthTextController.clear(),
-                      icon: const Icon(
-                        Icons.clear,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                  // onChanged: (value) => eventTitle = value,
-                ),
-              ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConvertButton(ThemeData theme, Color primaryColor) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            elevation: 2,
+            shadowColor: primaryColor.withOpacity(0.4),
+          ),
+          onPressed: () {
+            setState(() {
+              try {
+                _day = int.tryParse(_dayTextController.text);
+                _month = int.tryParse(_monthTextController.text);
+                _year = int.tryParse(_yearTextController.text);
+
+                debugPrint("------ Calendar Type: $calendarType}");
+                _convertInputDate(calendarType);
+
+                if (calendarType == CalendarType.Gregorian) {
+                  int? eD = int.tryParse(_dayTextController.text);
+                  int? eM = int.tryParse(_monthTextController.text);
+                  int? eY = int.tryParse(_yearTextController.text);
+                  if (eD == null ||
+                      eM == null ||
+                      eY == null ||
+                      _day == null ||
+                      _month == null ||
+                      _year == null) {
+                    print("I am wrong.");
+                    Navigator.of(context).pop();
+                    throw Exception();
+                  }
+                  widget.conversionResultUpdaterCallback!(
+                    eD,
+                    eM,
+                    eY,
+                    _day,
+                    _month,
+                    _year,
+                    CalendarType.Ethiopian,
+                  );
+                  calendarType = CalendarType.Ethiopian;
+                } else {
+                  widget.conversionResultUpdaterCallback!(
+                      _day,
+                      _month,
+                      _year,
+                      int.tryParse(_dayTextController.text),
+                      int.tryParse(_monthTextController.text)! - 1,
+                      int.tryParse(_yearTextController.text),
+                      CalendarType.Gregorian);
+                  calendarType = CalendarType.Gregorian;
+                }
+                Navigator.of(context).pop();
+              } catch (e) {
+                print(e);
+                Globals.showSnack(
+                  context: context,
+                  type: SnackMessageType.error,
+                  message: "Please enter a valid date.",
+                );
+              }
+            });
+          },
+          child: Text(
+            calendarType == CalendarType.Ethiopian
+                ? "${AppLocalizations.of(context)!.convertAndReturn}"
+                : "Convert & Back",
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
-          const VerticalDivider(),
-          Expanded(
-            flex: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(calendarType == CalendarType.Ethiopian ? "${AppLocalizations.of(context)!.year}" : "Year"),
-                TextField(
-                  controller: _yearTextController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    LengthLimitingTextInputFormatter(4),
-                  ],
-                  decoration: InputDecoration(
-                    // hintText: widget.calendarType == CalendarType.Ethiopian ? "ዓመት" : "Year",
-                    suffixIcon: IconButton(
-                      onPressed: () => _yearTextController.clear(),
-                      icon: const Icon(
-                        Icons.clear,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                  // onChanged: (value) => eventTitle = value,
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  CONVERSION LOGIC (unchanged)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   _convertInputDate(CalendarType? calendarType) {
     try {
@@ -320,104 +539,5 @@ class _InputBasedConverterDialogState extends State<InputBasedConverterDialog> w
       print(e);
       return false;
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: MediaQuery.of(context).viewInsets,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 20.0, right: 20.0),
-        child: ScaleTransition(
-          scale: scaleAnimation,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                // height: Globals.deviceHeight / 3,
-                width: Globals.deviceWidth,
-                decoration: ShapeDecoration(
-                    color: Theme.of(context).dialogBackgroundColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0))),
-                child: Column(children: [
-                  _getConversionOptions(),
-                  const Divider(),
-                  _getInputRow(),
-                  const Divider(),
-                  Center(
-                    child: TextButton(
-                      child: Text(calendarType == CalendarType.Ethiopian
-                          ? "${AppLocalizations.of(context)!.convertAndReturn}"
-                          : "Convert & Back"),
-                      onPressed: () {
-                        setState(() {
-                          try {
-                            _day = int.tryParse(_dayTextController.text);
-                            _month = int.tryParse(_monthTextController.text);
-                            _year = int.tryParse(_yearTextController.text);
-
-                            debugPrint("------ Calendar Type: $calendarType}");
-                            _convertInputDate(calendarType);
-
-                            if (calendarType == CalendarType.Gregorian) {
-                              int? eD = int.tryParse(_dayTextController.text);
-                              int? eM = int.tryParse(_monthTextController.text);
-                              int? eY = int.tryParse(_yearTextController.text);
-                              if (eD == null ||
-                                  eM == null ||
-                                  eY == null ||
-                                  _day == null ||
-                                  _month == null ||
-                                  _year == null) {
-                                print("I am wrong.");
-                                Navigator.of(context).pop();
-                                throw Exception();
-                              }
-                              widget.conversionResultUpdaterCallback!(
-                                // int.tryParse(_dayTextController.text),
-                                // int.tryParse(_monthTextController.text),
-                                // int.tryParse(_yearTextController.text),
-                                eD,
-                                eM,
-                                eY,
-                                _day,
-                                _month,
-                                _year,
-                                CalendarType.Ethiopian,
-                              );
-                              calendarType = CalendarType.Ethiopian;
-                            } else {
-                              widget.conversionResultUpdaterCallback!(
-                                  _day,
-                                  _month,
-                                  _year,
-                                  int.tryParse(_dayTextController.text),
-                                  int.tryParse(_monthTextController.text)! - 1,
-                                  int.tryParse(_yearTextController.text),
-                                  CalendarType.Gregorian);
-                              calendarType = CalendarType.Gregorian;
-                            }
-                            Navigator.of(context).pop();
-                          } catch (e) {
-                            print(e);
-                            Globals.showSnack(
-                              context: context,
-                              type: SnackMessageType.error,
-
-                              ///TODO: Get message from language config file
-                              message: "Please enter a valid date.",
-                            );
-                          }
-                        });
-                      },
-                    ),
-                  )
-                ]),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

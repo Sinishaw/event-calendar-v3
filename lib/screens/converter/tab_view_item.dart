@@ -8,16 +8,40 @@ class TabViewItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color clr = Theme.of(context).primaryColor;
-    return Card(
-      shadowColor: clr,
-      elevation: isSelected ? 5 : 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected ? clr.withOpacity(0.7) : clr.withOpacity(0.07),
-          borderRadius: const BorderRadius.all(Radius.circular(5)),
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? primaryColor
+            : (isDark ? Colors.white.withOpacity(0.06) : primaryColor.withOpacity(0.06)),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [],
+      ),
+      child: Center(
+        child: DefaultTextStyle(
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected
+                ? Colors.white
+                : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+          ),
+          child: innerText,
         ),
-        child: Center(child: innerText),
       ),
     );
   }
