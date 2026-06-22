@@ -40,26 +40,53 @@ class _AgeCalculatorDialogState extends State<AgeCalculatorDialog> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
     double size = Globals.deviceWidth! * 0.55;
+
     return Center(
       child: ScaleTransition(
-          scale: scaleAnimation,
-          child: Container(
-              height: size,
-              width: size,
-              decoration: ShapeDecoration(
-                  color: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(size))),
-              // width: Globals.deviceWidth/1.2,
-              child: Padding(
-                padding: const EdgeInsets.all(0.5),
-                child: Container(
-                    decoration: ShapeDecoration(
-                        color: Theme.of(context).dialogBackgroundColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(size))),
-                    child:
-                        Utility.showTimeDifference(context: context, gcDate: widget.gcDate!, etDate: widget.etDate!)),
-              ))),
+        scale: scaleAnimation,
+        child: Container(
+          height: size,
+          width: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              /// Outer glow ring
+              BoxShadow(
+                color: primaryColor.withOpacity(0.2),
+                blurRadius: 20,
+                spreadRadius: 3,
+              ),
+              /// Subtle inner shadow for depth
+              BoxShadow(
+                color: primaryColor.withOpacity(0.1),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(2.5),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.dialogBackgroundColor,
+                border: Border.all(
+                  color: primaryColor.withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Utility.showTimeDifference(
+                context: context,
+                gcDate: widget.gcDate!,
+                etDate: widget.etDate!,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,11 +1,9 @@
-// ignore_for_file: avoid_unnecessary_containers
-
+import 'dart:ui';
 import 'package:event_calendar_v2/common/geez_numbers.dart';
 import 'package:event_calendar_v2/l10n/app_localizations.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/converter/age_calculator_dialog.dart';
 import 'package:event_calendar_v2/screens/converter/input_based_converter_dialog.dart';
-import 'package:event_calendar_v2/screens/converter/tab_view_item.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
@@ -40,35 +38,514 @@ class _ConverterPageState extends State<ConverterPage> {
   FixedExtentScrollController? _scrollController;
 
   CalendarType? calendarType;
+  bool _isProgrammaticScroll = false;
 
-  final List<Text> conversionOptions = [
-    const Text("From - Gregorian"),
-    Text(AppLocalizations.of(MonthGlobals.context!)!.fromEthiopia),
-  ];
-
-  List<Text> selectedConversion = [];
   final TextStyle _textStyle = const TextStyle(fontSize: 15);
 
   @override
   Widget build(BuildContext context) {
-    ///Adjusting screen size for iOS scroll hidden (tested on pro max 14)
-    double height = MediaQuery.of(context).size.height;
-    double screenDiff = height > 900 ? 3.8 : 2.5;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: Center(child: Text(AppLocalizations.of(context)!.dateConverter)),
         automaticallyImplyLeading: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       resizeToAvoidBottomInset: true,
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: height - (AppBar().preferredSize.height * screenDiff),
-          child: getScrollableDatePicker(),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          /// Use the full available height. If the content overflows on very
+          /// small devices, SingleChildScrollView lets the user scroll.
+          return SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: _buildBody(theme, isDark),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBody(ThemeData theme, bool isDark) {
+    bool isToday = isScrollIndicatesToday();
+    final primaryColor = theme.primaryColor;
+
+    return Column(
+      children: [
+        /// ── Section 1: Calendar Toggle ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: _buildSegmentedToggle(theme, isDark),
+        ),
+
+        /// ── Section 2: Scroll Wheel Picker ──
+        Expanded(
+          flex: 5,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                /// Glassmorphic selection indicator
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      height: 40,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(isDark ? 0.2 : 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: primaryColor.withOpacity(0.25),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                /// The three scroll wheels
+                Row(children: [
+                  Expanded(
+                    flex: 1,
+                    child: getScrollable(ScrollableType.day),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: getScrollable(ScrollableType.month),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: getScrollable(ScrollableType.year),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
+        /// ── Section 3: Action Buttons ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: _buildActionButtons(theme, isToday),
+        ),
+
+        const SizedBox(height: 4),
+
+        /// ── Section 4: Result Panel ──
+        _buildResultPanel(theme, isDark),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  SEGMENTED TOGGLE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildSegmentedToggle(ThemeData theme, bool isDark) {
+    final isGregorian = calendarType == CalendarType.Gregorian;
+    final primaryColor = theme.primaryColor;
+    final pillBg = isDark
+        ? Colors.white.withOpacity(0.08)
+        : primaryColor.withOpacity(0.08);
+
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: pillBg,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          /// "From - Gregorian" toggle
+          Expanded(
+            child: GestureDetector(
+              onTap: () async {
+                if (calendarType == CalendarType.Gregorian) return;
+                setState(() {
+                  _isProgrammaticScroll = true;
+                  calendarType = CalendarType.Gregorian;
+                  initToday();
+                });
+                await scrollToInitialDay();
+                if (mounted) {
+                  setState(() {
+                    _isProgrammaticScroll = false;
+                  });
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                decoration: BoxDecoration(
+                  color: isGregorian ? primaryColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: isGregorian
+                      ? [
+                          BoxShadow(
+                            color: primaryColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Center(
+                  child: Text(
+                    'From - Gregorian',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isGregorian
+                          ? Colors.white
+                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          /// "From - Ethiopian" toggle
+          Expanded(
+            child: GestureDetector(
+              onTap: () async {
+                if (calendarType == CalendarType.Ethiopian) return;
+                setState(() {
+                  _isProgrammaticScroll = true;
+                  calendarType = CalendarType.Ethiopian;
+                  initToday();
+                });
+                await scrollToInitialDay();
+                if (mounted) {
+                  setState(() {
+                    _isProgrammaticScroll = false;
+                  });
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                decoration: BoxDecoration(
+                  color: !isGregorian ? primaryColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: !isGregorian
+                      ? [
+                          BoxShadow(
+                            color: primaryColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.fromEthiopia,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: !isGregorian
+                          ? Colors.white
+                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  ACTION BUTTONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildActionButtons(ThemeData theme, bool isToday) {
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        /// Today button
+        _buildPillButton(
+          icon: Icons.today_rounded,
+          label: AppLocalizations.of(context)!.today,
+          theme: theme,
+          isDark: isDark,
+          isDisabled: isToday,
+          onTap: () async {
+            setState(() {
+              _isProgrammaticScroll = true;
+              initToday();
+            });
+            await scrollToInitialDay();
+            setState(() {
+              _isProgrammaticScroll = false;
+            });
+          },
+        ),
+
+        /// Age button
+        _buildPillButton(
+          icon: Icons.calculate_outlined,
+          label: AppLocalizations.of(context)!.age,
+          theme: theme,
+          isDark: isDark,
+          isDisabled: isToday,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AgeCalculatorDialog(
+                  calendarType: calendarType,
+                  etDate: LocalDate.date(yearEt, monthEt, dayEt),
+                  gcDate: LocalDate.date(yearGc, monthGc, dayGc),
+                );
+              },
+            );
+          },
+        ),
+
+        /// Input button
+        _buildPillButton(
+          icon: Icons.edit_rounded,
+          label: AppLocalizations.of(context)!.input,
+          theme: theme,
+          isDark: isDark,
+          isDisabled: false,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                if (calendarType == CalendarType.Ethiopian) {
+                  return InputBasedConverterDialog(
+                    calendarType: calendarType,
+                    day: dayEt,
+                    month: monthEt,
+                    year: yearEt,
+                    conversionResultUpdaterCallback: conversionResultUpdaterCallback,
+                  );
+                } else {
+                  return InputBasedConverterDialog(
+                    calendarType: calendarType,
+                    day: dayGc,
+                    month: monthGc,
+                    year: yearGc,
+                    conversionResultUpdaterCallback: conversionResultUpdaterCallback,
+                  );
+                }
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPillButton({
+    required IconData icon,
+    required String label,
+    required ThemeData theme,
+    required bool isDark,
+    required bool isDisabled,
+    required VoidCallback onTap,
+  }) {
+    final primaryColor = theme.primaryColor;
+    final bgColor = isDisabled
+        ? (isDark ? Colors.white.withOpacity(0.04) : Colors.grey.withOpacity(0.08))
+        : (isDark ? primaryColor.withOpacity(0.15) : primaryColor.withOpacity(0.1));
+    final fgColor = isDisabled
+        ? theme.textTheme.bodyLarge!.color!.withOpacity(0.25)
+        : theme.textTheme.bodyLarge!.color;
+
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: isDisabled ? null : onTap,
+        splashColor: primaryColor.withOpacity(0.2),
+        highlightColor: primaryColor.withOpacity(0.08),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: fgColor),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: fgColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  RESULT PANEL — Creative Separation
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildResultPanel(ThemeData theme, bool isDark) {
+    final primaryColor = theme.primaryColor;
+
+    /// Build the Ethiopian date string (same logic as original)
+    String etConverted;
+    if (yearEt! >= 1900) {
+      etConverted =
+          '$weekDayEt  $monthNameEt ${isGeezNumbers ? GeezNumbers.geezNumbers[dayEt! - 1] : dayEt}, ${isGeezNumbers ? GeezNumbers.geezYears[yearEt! - 1900] : yearEt}';
+    } else {
+      etConverted =
+          '$weekDayEt  $monthNameEt ${isGeezNumbers ? GeezNumbers.geezNumbers[dayEt! - 1] : dayEt}, ${isGeezNumbers ? GeezNumbers.geezYears18s[(yearEt! - 1900).abs()] : yearEt}';
+    }
+    String gcConverted = '$weekDayGc $monthNameGc $dayGc, $yearGc';
+
+    return Expanded(
+      flex: 3,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: isDark
+              ? Colors.white.withOpacity(0.05)
+              : primaryColor.withOpacity(0.04),
+          border: Border.all(
+            color: primaryColor.withOpacity(isDark ? 0.12 : 0.08),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            /// ── Ethiopian Date ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.brightness_5_rounded,
+                        size: 14,
+                        color: primaryColor.withOpacity(0.7),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        AppLocalizations.of(context)!.ethiopian,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.45),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      etConverted,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            /// ── Soft gradient horizontal divider ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      primaryColor.withOpacity(0.0),
+                      primaryColor.withOpacity(0.25),
+                      primaryColor.withOpacity(0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            /// ── Gregorian Date ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.public_rounded,
+                        size: 14,
+                        color: primaryColor.withOpacity(0.7),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Gregorian',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.45),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      gcConverted,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  INIT & STATE (unchanged logic)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   @override
   void initState() {
@@ -79,8 +556,19 @@ class _ConverterPageState extends State<ConverterPage> {
     _dayScrollController = FixedExtentScrollController();
     initToday();
     calendarType = CalendarType.Gregorian;
-    WidgetsBinding.instance.addPostFrameCallback((_) => scrollToInitialDay());
-    selectedConversion.add(conversionOptions[0]);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        setState(() {
+          _isProgrammaticScroll = true;
+        });
+      }
+      await scrollToInitialDay();
+      if (mounted) {
+        setState(() {
+          _isProgrammaticScroll = false;
+        });
+      }
+    });
   }
 
   initToday() {
@@ -102,22 +590,27 @@ class _ConverterPageState extends State<ConverterPage> {
     print("ET DAY: $monthNameEt $dayEt, $yearEt");
   }
 
-  scrollToInitialDay() {
+  Future<void> scrollToInitialDay() async {
     if (calendarType == CalendarType.Ethiopian) {
       ///If conversion is from Ethiopian to Gregorian
-      _yearScrollController!
-          .animateToItem(yearEt! - 1900, duration: const Duration(milliseconds: 400), curve: Curves.easeInOutBack);
-      _monthScrollController!
-          .animateToItem(monthEt! - 1, duration: const Duration(milliseconds: 400), curve: Curves.ease);
-      _dayScrollController!
-          .animateToItem(dayEt! - 1, duration: const Duration(milliseconds: 400), curve: Curves.linear);
+      await Future.wait([
+        _yearScrollController!.animateToItem(yearEt! - 1900,
+            duration: const Duration(milliseconds: 400), curve: Curves.easeInOutBack),
+        _monthScrollController!.animateToItem(monthEt! - 1,
+            duration: const Duration(milliseconds: 400), curve: Curves.ease),
+        _dayScrollController!.animateToItem(dayEt! - 1,
+            duration: const Duration(milliseconds: 400), curve: Curves.linear),
+      ]);
     } else if (calendarType == CalendarType.Gregorian) {
       ///If conversion is from Gregorian to Ethiopian
-      _yearScrollController!
-          .animateToItem(yearGc! - 1900, duration: const Duration(milliseconds: 400), curve: Curves.easeInOutBack);
-      _monthScrollController!.animateToItem(monthGc!, duration: const Duration(milliseconds: 400), curve: Curves.ease);
-      _dayScrollController!
-          .animateToItem(dayGc! - 1, duration: const Duration(milliseconds: 400), curve: Curves.linear);
+      await Future.wait([
+        _yearScrollController!.animateToItem(yearGc! - 1900,
+            duration: const Duration(milliseconds: 400), curve: Curves.easeInOutBack),
+        _monthScrollController!.animateToItem(monthGc!,
+            duration: const Duration(milliseconds: 400), curve: Curves.ease),
+        _dayScrollController!.animateToItem(dayGc! - 1,
+            duration: const Duration(milliseconds: 400), curve: Curves.linear),
+      ]);
     }
   }
 
@@ -184,248 +677,9 @@ class _ConverterPageState extends State<ConverterPage> {
     weekDayGc = MonthGlobals.gcWeekNamesLong[gcDate.weekday - 1];
   }
 
-  getScrollableDatePicker() {
-    bool isToday = isScrollIndicatesToday();
-    // Color shadowColor = isToday ? Theme.of(context).buttonColor : Theme.of(context).primaryColor;
-    Color? buttonTextColor = isToday
-        ? Theme.of(context).textTheme.bodyLarge!.color!.withOpacity(0.3)
-        : Theme.of(context).textTheme.bodyLarge!.color;
-    TextStyle ts = TextStyle(color: buttonTextColor);
-
-    return Column(
-      children: [
-        Expanded(child: getConversionOption()),
-        Expanded(
-          flex: 5,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 50, right: 50),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.5),
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    ),
-                    height: 30,
-                    width: Globals.deviceWidth),
-                Container(
-                  child: Row(children: [
-                    Expanded(
-                      flex: 1,
-                      child: getScrollable(ScrollableType.day),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: getScrollable(ScrollableType.month),
-                    ),
-                    Expanded(
-                      flex: 1,
-                      child: getScrollable(ScrollableType.year),
-                    )
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8, bottom: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                child: Card(
-                  elevation: isToday ? 0 : 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                      Icon(
-                        Icons.today,
-                        color: buttonTextColor,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4.0),
-                        child: Text(AppLocalizations.of(context)!.today, style: ts),
-                      )
-                    ]),
-                  ),
-                ),
-                onTap: () {
-                  setState(() {
-                    ///Returning to current day(today) creates inconsistency and the following if...else
-                    ///block try to refresh the whole content by switching scrolls and fix in work-arround
-                    selectedConversion.clear();
-                    if (calendarType == CalendarType.Ethiopian) {
-                      calendarType = CalendarType.Gregorian;
-                      selectedConversion.add(conversionOptions[0]);
-                    } else {
-                      calendarType = CalendarType.Ethiopian;
-                      selectedConversion.add(conversionOptions[1]);
-                    }
-
-                    initToday();
-                    scrollToInitialDay();
-
-                    print("GC DAY: $monthGc $monthNameGc $dayGc, $yearGc");
-                    print("ET DAY: $monthNameEt $dayEt, $yearEt");
-                    // initToday(); // selectedConversion.add(conversionOptions[0]);
-                  });
-                  // WidgetsBinding.instance.addPostFrameCallback((_) => scrollToInitialDay());
-                },
-              ),
-              GestureDetector(
-                onTap: !isToday
-                    ? () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AgeCalculatorDialog(
-                              calendarType: calendarType,
-                              etDate: LocalDate.date(yearEt, monthEt, dayEt),
-                              gcDate: LocalDate.date(yearGc, monthGc, dayGc),
-                            );
-                          },
-                        );
-                      }
-                    : null,
-                child: Card(
-                  elevation: isToday ? 0 : 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8.0, right: 8),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                      Icon(
-                        Icons.calculate_outlined,
-                        color: buttonTextColor,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4.0),
-                        child: Text(
-                          AppLocalizations.of(context)!.age,
-                          style: ts,
-                        ),
-                      )
-                    ]),
-                  ),
-                ),
-              ),
-              GestureDetector(
-                child: Card(
-                  elevation: 3,
-                  shadowColor: Theme.of(context).textTheme.bodyLarge!.color,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                      const Icon(Icons.edit),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4.0),
-                        child: Text(AppLocalizations.of(context)!.input),
-                      )
-                    ]),
-                  ),
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      if (calendarType == CalendarType.Ethiopian) {
-                        return InputBasedConverterDialog(
-                          calendarType: calendarType,
-                          day: dayEt,
-                          month: monthEt,
-                          year: yearEt,
-                          conversionResultUpdaterCallback: conversionResultUpdaterCallback,
-                        );
-                      } else {
-                        return InputBasedConverterDialog(
-                          calendarType: calendarType,
-                          day: dayGc,
-                          month: monthGc,
-                          year: yearGc,
-                          conversionResultUpdaterCallback: conversionResultUpdaterCallback,
-                        );
-                      }
-                    },
-                    // builder: (_) => InputBasedConverterDialog(calendarType: calendarType,),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Container(
-            color: Theme.of(context).primaryColor.withOpacity(0.05),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          "${AppLocalizations.of(context)!.ethiopian} : ",
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.bottomLeft,
-                          child: Builder(
-                            builder: (context) {
-                              String converted;
-                              if (yearEt! >= 1900) {
-                                converted =
-                                    '  $weekDayEt  $monthNameEt ${isGeezNumbers ? GeezNumbers.geezNumbers[dayEt! - 1] : dayEt}, ${isGeezNumbers ? GeezNumbers.geezYears[yearEt! - 1900] : yearEt}';
-                              } else {
-                                converted =
-                                    '  $weekDayEt  $monthNameEt ${isGeezNumbers ? GeezNumbers.geezNumbers[dayEt! - 1] : dayEt}, ${isGeezNumbers ? GeezNumbers.geezYears18s[(yearEt! - 1900).abs()] : yearEt}';
-                              }
-                              return Text(converted);
-                            },
-                          )),
-                    )
-                  ],
-                ),
-                const Divider(),
-                Row(
-                  children: [
-                    const Expanded(
-                        flex: 1,
-                        child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              "Gregorian : ",
-                              textAlign: TextAlign.right,
-                            ))),
-                    Expanded(
-                      flex: 2,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.bottomLeft,
-                        child: Text(
-                          '  $weekDayGc $monthNameGc $dayGc, $yearGc',
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  SCROLL WHEEL BUILDERS (logic unchanged, visuals refined)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   getScrollableList(ScrollableType scrollableType) {
     List<Widget> scrollableList;
@@ -468,7 +722,6 @@ class _ConverterPageState extends State<ConverterPage> {
       scrollableList = List<Widget>.generate(
         daysInMonth,
         (index) {
-          // print("INDEX:: $index");
           return Align(
               alignment: Alignment.center,
               child: Text(
@@ -490,7 +743,9 @@ class _ConverterPageState extends State<ConverterPage> {
       if (dayEt! > pagumeLength) {
         dayEt = pagumeLength - 1;
         print("Pagume logic");
-        _dayScrollController!.jumpToItem(dayEt!);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _dayScrollController!.jumpToItem(dayEt!);
+        });
       }
     }
 
@@ -501,77 +756,55 @@ class _ConverterPageState extends State<ConverterPage> {
       debugPrint("-------------------- Month Length: $monthLength");
       if (dayGc! > monthLength) {
         dayGc = monthLength - 1;
-        _dayScrollController!.jumpToItem(dayGc!);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _dayScrollController!.jumpToItem(dayGc!);
+        });
       }
     }
   }
 
   getScrollable(ScrollableType scrollableType) {
-    double itemExtent = 75.0;
+    double itemExtent = 52.0;
     double offAxisFraction = 0.5;
     bool useMagnifier = true;
-    double magnification = 1.0;
-    double diameterRatio = 2.5;
-    double squeeze = 1.4;
-    double perspective = 0.008;
-    double overAndUnderCenterOpacity = 0.4;
+    double magnification = 1.15;
+    double diameterRatio = 2.0;
+    double squeeze = 1.2;
+    double perspective = 0.006;
+    double overAndUnderCenterOpacity = 0.3;
     adjustMonthLengthDifferenceWhileScrolling(scrollableType);
     List<Widget> scrollableList = getScrollableList(scrollableType);
-    return Container(
-      child: ListWheelScrollView.useDelegate(
-        itemExtent: itemExtent,
-        useMagnifier: useMagnifier,
-        magnification: magnification,
-        offAxisFraction: offAxisFraction,
-        diameterRatio: diameterRatio,
-        squeeze: squeeze,
-        perspective: perspective,
-        overAndUnderCenterOpacity: overAndUnderCenterOpacity,
-        physics: const FixedExtentScrollPhysics(),
-        childDelegate: ListWheelChildLoopingListDelegate(
-          children: scrollableList,
-        ),
-        controller: _scrollController,
-        onSelectedItemChanged: (value) {
-          setState(() {
-            calendarType == CalendarType.Ethiopian
-                ? syncEtDayChange(scrollableType, value)
-                : syncGcDayChange(scrollableType, value);
-          });
-        },
+    return ListWheelScrollView.useDelegate(
+      itemExtent: itemExtent,
+      useMagnifier: useMagnifier,
+      magnification: magnification,
+      offAxisFraction: offAxisFraction,
+      diameterRatio: diameterRatio,
+      squeeze: squeeze,
+      perspective: perspective,
+      overAndUnderCenterOpacity: overAndUnderCenterOpacity,
+      physics: const FixedExtentScrollPhysics(),
+      childDelegate: ListWheelChildLoopingListDelegate(
+        children: scrollableList,
       ),
+      controller: _scrollController,
+      onSelectedItemChanged: (value) {
+        if (_isProgrammaticScroll) return;
+        setState(() {
+          calendarType == CalendarType.Ethiopian
+              ? syncEtDayChange(scrollableType, value)
+              : syncGcDayChange(scrollableType, value);
+        });
+      },
     );
   }
 
-  getConversionOption() {
-    return Container(
-      child: GridView.count(
-        childAspectRatio: 3.5,
-        crossAxisCount: 2,
-        children: conversionOptions.map((conversionOption) {
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedConversion.clear();
-                selectedConversion.add(conversionOption);
-                if (conversionOption.data!.toLowerCase() == "from - gregorian") {
-                  calendarType = CalendarType.Gregorian;
-                } else {
-                  calendarType = CalendarType.Ethiopian;
-                }
-                initToday();
-                scrollToInitialDay();
-              });
-            },
-            child: TabViewItem(innerText: conversionOption, isSelected: selectedConversion.contains(conversionOption)),
-          );
-        }).toList(),
-      ),
-    );
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  CALLBACK & HELPERS (unchanged)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  conversionResultUpdaterCallback(
-      int etDay, int etMonth, int etYear, int gcDay, int gcMonth, int gcYear, CalendarType type) {
+  Future<void> conversionResultUpdaterCallback(
+      int etDay, int etMonth, int etYear, int gcDay, int gcMonth, int gcYear, CalendarType type) async {
     try {
       bool isDateValid = true;
       try {
@@ -595,27 +828,21 @@ class _ConverterPageState extends State<ConverterPage> {
         return;
       }
       setState(() {
-        try {
-          dayEt = etDay;
-          monthEt = etMonth;
-          yearEt = etYear;
-          dayGc = gcDay;
-          monthGc = gcMonth;
-          yearGc = gcYear;
-          calendarType = type;
-          selectedConversion.clear();
-          if (calendarType == CalendarType.Ethiopian) {
-            selectedConversion.add(conversionOptions[1]);
-          } else {
-            selectedConversion.add(conversionOptions[0]);
-          }
-          scrollToInitialDay();
-          // WidgetsBinding.instance.addPostFrameCallback((_) => scrollToInitialDay());
-        } catch (e) {
-          debugPrint(e.toString());
-          return;
-        }
+        _isProgrammaticScroll = true;
+        dayEt = etDay;
+        monthEt = etMonth;
+        yearEt = etYear;
+        dayGc = gcDay;
+        monthGc = gcMonth;
+        yearGc = gcYear;
+        calendarType = type;
       });
+      await scrollToInitialDay();
+      if (mounted) {
+        setState(() {
+          _isProgrammaticScroll = false;
+        });
+      }
     } catch (e) {
       debugPrint(e.toString());
     }
