@@ -7,6 +7,7 @@ import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:event_calendar_v2/shared/models/local_time_model.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class TimePickerDialogLocal extends StatefulWidget {
   const TimePickerDialogLocal({super.key, required this.timeSetterCallback, this.initialGcTime});
@@ -152,6 +153,10 @@ class _TimePickerDialogLocalState extends State<TimePickerDialogLocal> with Tick
             ),
       controller: controller,
       onSelectedItemChanged: (value) {
+        HapticFeedback.selectionClick();
+        if (Theme.of(context).platform == TargetPlatform.iOS) {
+          SystemSound.play(SystemSoundType.click);
+        }
         setState(() {
           if (scrollableType == TimeScrollerType.hour) {
             isInitializeForceHourToScroll = true;

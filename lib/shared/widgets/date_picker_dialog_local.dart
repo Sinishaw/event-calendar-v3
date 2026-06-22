@@ -7,6 +7,7 @@ import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class DatePickerDialogLocal extends StatefulWidget {
   const DatePickerDialogLocal({super.key, required this.callback, this.selectedEtDate, this.selectedGcDate});
@@ -449,6 +450,10 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
       ),
       controller: _scrollController,
       onSelectedItemChanged: (value) {
+        HapticFeedback.selectionClick();
+        if (Theme.of(context).platform == TargetPlatform.iOS) {
+          SystemSound.play(SystemSoundType.click);
+        }
         setState(() {
           calendarType == CalendarType.Ethiopian
               ? syncEtDayChange(scrollableType, value)
