@@ -302,6 +302,28 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     );
   }
 
+  Color _getHolidayColor(BuildContext context) {
+    try {
+      final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+      final String? hexValue = isDarkMode
+          ? Globals.setting.holidayColorDark
+          : Globals.setting.holidayColorLight;
+      if (hexValue != null && hexValue.isNotEmpty) {
+        String cleanHex = hexValue.replaceAll('#', '');
+        if (cleanHex.length == 6) {
+          cleanHex = 'FF$cleanHex';
+        }
+        final int? colorInt = int.tryParse(cleanHex, radix: 16);
+        if (colorInt != null) {
+          return Color(colorInt);
+        }
+      }
+    } catch (e) {
+      debugPrint("------ Error reading holidayColor from Globals.setting: $e");
+    }
+    return Colors.redAccent;
+  }
+
   Widget getMonthGrid(cellHeight, cellWidth, List<Day> monthArray, BuildContext context, {required int year, required int month}) {
     ///Based on week start day (Mon or Sun), add 1 offset if day start by Sun or zero
     String weekStartDay = Utility.getWeekStartDay();
@@ -333,6 +355,9 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
     final double screenHeight = MediaQuery.of(context).size.height;
     double monthContainerOffsetFix = screenHeight > 800 ? 2.0 : 5.0;
     cellHeight -= monthContainerOffsetFix;
+
+    final Color holidayColor = _getHolidayColor(context);
+
     return GridView.count(
       crossAxisCount: 7,
       childAspectRatio: cellWidth / cellHeight,
@@ -360,18 +385,28 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
         bool isPrevMonthDays = index < activeStartIndex ? true : false;
         bool isNextMonthDays = index > activeStartIndex + (monthLength - 1) ? true : false;
         bool isPrevOrNextMonthDays = isPrevMonthDays || isNextMonthDays;
-        double etDayFontSize = isGeezNumbers ? 18 : 20;
+        double etDayFontSize = isGeezNumbers ? 16 : 18;
 
-        if (!isSunday && !isToday) {
-          cellColor = Theme.of(context).textTheme.bodyLarge!.color!.withOpacity(isGeezNumbers ? 0.8 : 1.0);
-        } else if (isSunday) {
-          cellColor = Colors.redAccent;
-        }
-        if (isPrevOrNextMonthDays && !isSunday) {
-          ///Prev and Next month days color except Meskerem Prev days (Which are empty by default)
-          cellColor = (month > 1 || isNextMonthDays) ? Colors.grey : Colors.transparent;
-        } else if (isPrevOrNextMonthDays && isSunday) {
-          cellColor = Colors.redAccent.withOpacity(0.3);
+        FontWeight fontWeight;
+        FontWeight gcFontWeight;
+        if (isPrevOrNextMonthDays) {
+          fontWeight = FontWeight.w300;
+          gcFontWeight = FontWeight.w300;
+          if (isSunday) {
+            cellColor = holidayColor.withOpacity(0.4);
+          } else {
+            cellColor = (month > 1 || isNextMonthDays) ? Colors.grey.withOpacity(0.5) : Colors.transparent;
+          }
+        } else {
+          fontWeight = FontWeight.w700; // Bold Ethiopian day
+          gcFontWeight = FontWeight.w400; // Regular Gregorian day
+          if (isSunday) {
+            cellColor = holidayColor;
+          } else if (isToday) {
+            cellColor = Theme.of(context).colorScheme.secondary;
+          } else {
+            cellColor = Theme.of(context).textTheme.bodyLarge!.color!.withOpacity(isGeezNumbers ? 0.85 : 1.0);
+          }
         }
 
         Color eventIndicatorColor = Colors.transparent;
@@ -383,7 +418,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
             if (item.eD == monthArray[index].etDay && item.repeatOption != NotificationRepeatOption.weekly) {
               hasEvent = true;
               if (!isNextMonthDays) {
-                eventIndicatorColor = Theme.of(context).primaryColor;
+                eventIndicatorColor = holidayColor;
               }
               break;
             } else if (item.eD == monthArray[index].etDay && item.repeatOption == NotificationRepeatOption.weekly) {
@@ -391,7 +426,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               hasEvent = true;
               if (month == item.eM! + 1 && year == item.eY) {
                 if (!isNextMonthDays) {
-                  eventIndicatorColor = Theme.of(context).colorScheme.secondary;
+                  eventIndicatorColor = holidayColor;
                 }
                 break;
               }
@@ -430,39 +465,48 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                   padding: const EdgeInsets.only(left: 2, right: 2),
                   child: Container(
                     decoration: BoxDecoration(
-                        color: isToday ? Theme.of(context).primaryColor.withOpacity(0.5) : Colors.transparent,
-                        borderRadius: const BorderRadius.all(Radius.circular(30.0))),
+                        color: isToday
+                            ? Theme.of(context).colorScheme.secondary.withOpacity(0.15)
+                            : Colors.transparent,
+                        borderRadius: const BorderRadius.all(Radius.circular(12.0))),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Wrap(
-                            verticalDirection: VerticalDirection.down,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               monthArray[index].geezDay != "0"
                                   ? Text(isGeezNumbers ? monthArray[index].geezDay! : "${monthArray[index].etDay}",
                                       style: TextStyle(
                                           fontSize: etDayFontSize,
-                                          fontWeight: isSunday ? FontWeight.w300 : FontWeight.w200,
+                                          fontWeight: fontWeight,
                                           color: cellColor))
                                   : Image.asset("assets/images/adey.png", height: 20, width: 20),
+                              const SizedBox(width: 4),
                               Text("${monthArray[index].gcDay}",
-                                  textAlign: TextAlign.start,
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w100,
-                                      fontSize: isSunday ? 12 : 12,
+                                      fontWeight: gcFontWeight,
+                                      fontSize: 11,
                                       fontStyle: FontStyle.italic,
-                                      color: cellColor)),
+                                      color: isPrevOrNextMonthDays
+                                          ? cellColor.withOpacity(0.6)
+                                          : cellColor.withOpacity(0.55))),
                             ],
                           ),
                           hasEvent
                               ? Container(
-                                  height: 2,
-                                  width: 30,
-                                  color: eventIndicatorColor,
+                                  margin: const EdgeInsets.only(top: 2),
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: eventIndicatorColor,
+                                  ),
                                 )
-                              : Container()
+                              : const SizedBox(height: 8),
                         ],
                       ),
                     ),

@@ -35,6 +35,8 @@ class FirebaseRC {
           "accentColorLight": "#a7d1d0",
           "primaryColorDark": "#5323cc",
           "accentColorDark": "#a18fcf",
+          "holidayColorLight": "#FF5252",
+          "holidayColorDark": "#FF5252",
         },
       );
       await remoteConfig.fetchAndActivate();
