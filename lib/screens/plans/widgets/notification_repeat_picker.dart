@@ -1,4 +1,5 @@
-import 'package:event_calendar_v2/l10n/app_localizations.dart';import 'package:event_calendar_v2/common/globals.dart';
+import 'package:event_calendar_v2/l10n/app_localizations.dart';
+import 'package:event_calendar_v2/common/globals.dart';
 import 'package:flutter/material.dart';
 
 class NotificationRepeatPicker extends StatefulWidget {
@@ -15,25 +16,13 @@ class _NotificationRepeatPickerState extends State<NotificationRepeatPicker> wit
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
-  double? width, height;
-
   int? _selectedItem;
 
   _init() {
-    ///Init Animation
-    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
-    _scaleAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeOutSine);
+    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _scaleAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack);
     _animationController.forward();
-
-    ///Default or previously selected category from entry form
     _selectedItem = widget.selectedOption;
-  }
-
-  @override
-  void didChangeDependencies() {
-    width = MediaQuery.of(context).size.width / 1.5;
-    height = MediaQuery.of(context).size.height / 2.5;
-    super.didChangeDependencies();
   }
 
   @override
@@ -42,58 +31,150 @@ class _NotificationRepeatPickerState extends State<NotificationRepeatPicker> wit
     super.initState();
   }
 
-  _getItemRow(index, isSelected, context) {
-    return ListTile(
-      leading: Icon(
-        isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-        // color: Globals.categoryColorList[index],
-        size: 32,
-      ),
-      title: Text(Globals.notificationRepeatOptionList[index]),
-      onTap: () {
-        setState(() {
-          _selectedItem = index;
-          widget.callback!(_selectedItem);
-          Navigator.of(context).pop();
-        });
-      },
-    );
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.dialogBackgroundColor;
+
+    double dialogOpacity = 1.0;
+    try {
+      if (Globals.setting.menuBackgroundOpacity != 0) {
+        dialogOpacity = Globals.setting.menuBackgroundOpacity;
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+
     return Center(
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: SizedBox(
-          height: height,
-          width: width,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20.0),
-            child: Scaffold(
-              appBar: AppBar(
-                title: Center(
-                  child:
-                      FittedBox(fit: BoxFit.scaleDown, child: Text(AppLocalizations.of(context)!.repeatNotification)),
-                ),
-                automaticallyImplyLeading: false,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(
+              maxWidth: 320,
+              maxHeight: MediaQuery.of(context).size.height * 0.45,
+            ),
+            decoration: BoxDecoration(
+              color: cardBg.withOpacity(dialogOpacity),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: primaryColor.withOpacity(0.18),
+                width: 1,
               ),
-              body: Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: ListView.builder(
-                  itemCount: Globals.notificationRepeatOptionList.length,
-                  itemBuilder: (context, index) {
-                    return index < 3
-                        ? Container(
-                            color: _selectedItem == index
-                                ? Theme.of(context).primaryColor.withOpacity(0.1)
-                                : Colors.transparent,
-                            child: _getItemRow(index, _selectedItem == index, context),
-                          )
-                        : Container();
-                  },
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-              ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    AppLocalizations.of(context)!.repeatNotification,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.secondary,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    color: primaryColor.withOpacity(0.12),
+                    height: 1,
+                  ),
+                ),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: 3, // only show first 3 options as per original code
+                    itemBuilder: (context, index) {
+                      final isSelected = _selectedItem == index;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedItem = index;
+                              widget.callback!(_selectedItem);
+                              Navigator.of(context).pop();
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? primaryColor.withOpacity(0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? primaryColor
+                                    : primaryColor.withOpacity(0.12),
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  index == 0
+                                      ? Icons.timer_off_rounded
+                                      : index == 1
+                                          ? Icons.today_rounded
+                                          : Icons.date_range_rounded,
+                                  color: isSelected ? primaryColor : primaryColor.withOpacity(0.6),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Text(
+                                    Globals.notificationRepeatOptionList[index],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                      color: isSelected
+                                          ? primaryColor
+                                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.85),
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: primaryColor,
+                                    size: 18,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
