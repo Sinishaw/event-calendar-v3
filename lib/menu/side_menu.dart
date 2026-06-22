@@ -29,59 +29,87 @@ class _SideMenuState extends State<SideMenu> {
         canvasColor: Theme.of(context).dialogBackgroundColor.withOpacity(menuOpacity),
       ),
       child: Drawer(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topRight: widget.isLeftMenu! ? const Radius.circular(24) : Radius.zero,
+            bottomRight: widget.isLeftMenu! ? const Radius.circular(24) : Radius.zero,
+            topLeft: widget.isLeftMenu! ? Radius.zero : const Radius.circular(24),
+            bottomLeft: widget.isLeftMenu! ? Radius.zero : const Radius.circular(24),
+          ),
+        ),
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
             SideMenuHeader(opacity: menuOpacity),
+            const SizedBox(height: 8),
             SideMenuItem(
               text: AppLocalizations.of(context)!.home,
               icon: Icons.home,
+              isSelected: Globals.selectedIndex == 0,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 0, widget.callback(0)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.year,
               icon: Icons.grid_on,
+              isSelected: Globals.selectedIndex == 1,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 1, widget.callback(1)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.dateConverter,
               icon: Icons.swap_horizontal_circle,
+              isSelected: Globals.selectedIndex == 2,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 2, widget.callback(2)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.archives,
               icon: Icons.note,
+              isSelected: Globals.selectedIndex == 3,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 3, widget.callback(3)},
             ),
-            const Divider(
-              thickness: 2,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              child: Divider(
+                color: Theme.of(context).dividerColor.withOpacity(0.4),
+                thickness: 1,
+              ),
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.plans,
               icon: Icons.event_note,
+              isSelected: Globals.selectedIndex == 4,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 4, widget.callback(5)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.nationalDays,
               icon: Icons.celebration,
+              isSelected: Globals.selectedIndex == 5,
               onTap: () => {Globals.selectedIndex = 5, Globals.displayingIndex = 4, widget.callback(6)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.aboutApp,
               icon: Icons.info_sharp,
+              isSelected: Globals.selectedIndex == 6,
               onTap: () => {Globals.selectedIndex = 6, Globals.displayingIndex = 4, widget.callback(7)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.setting,
               icon: Icons.settings,
+              isSelected: Globals.selectedIndex == 7,
               onTap: () => {Globals.selectedIndex = 7, Globals.displayingIndex = 4, widget.callback(8)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.termsAndConditions,
               icon: Icons.text_snippet,
+              isSelected: Globals.selectedIndex == 8,
               onTap: () => {Globals.selectedIndex = 8, Globals.displayingIndex = 4, widget.callback(9)},
             ),
-            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              child: Divider(
+                color: Theme.of(context).dividerColor.withOpacity(0.4),
+                thickness: 1,
+              ),
+            ),
             CopyRightMenuItem(
               text: Globals.generalSetting.termsAndPolicies != null
                   ? ' version - ${Globals.generalSetting.termsAndPolicies!.appVersionNumber} ('
@@ -94,3 +122,4 @@ class _SideMenuState extends State<SideMenu> {
     );
   }
 }
+

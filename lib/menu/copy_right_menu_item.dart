@@ -9,21 +9,26 @@ class CopyRightMenuItem extends StatelessWidget {
   final Color? iconsColor;
   @override
   Widget build(BuildContext context) {
+    Color? colorToUse = iconsColor ?? Theme.of(context).primaryColor;
     return Column(
       children: [
-        Text(
-          text,
-          style: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w300, color: Colors.grey, fontStyle: FontStyle.italic),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w300, color: Colors.grey, fontStyle: FontStyle.italic),
+          ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 8.0, bottom: 20),
+          padding: const EdgeInsets.only(top: 4.0, bottom: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: const Icon(Icons.share),
-                color: iconsColor,
+                icon: const Icon(Icons.share, size: 20),
+                color: colorToUse,
                 onPressed: () {
                   Share.share(
                       '13 Months of Ethiopian Calendar https://play.google.com/store/apps/details?id=com.elexicon.ethiopiancalendar&hl=en&gl=US&showAllReviews=true');
@@ -32,7 +37,8 @@ class CopyRightMenuItem extends StatelessWidget {
               IconButton(
                 icon: Icon(
                   Icons.star_rate,
-                  color: iconsColor,
+                  color: colorToUse,
+                  size: 20,
                 ),
                 onPressed: () async {
                   try {
@@ -50,4 +56,5 @@ class CopyRightMenuItem extends StatelessWidget {
       ],
     );
   }
+
 }
