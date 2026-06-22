@@ -45,25 +45,25 @@ class _SideMenuState extends State<SideMenu> {
             SideMenuItem(
               text: AppLocalizations.of(context)!.home,
               icon: Icons.home,
-              isSelected: Globals.selectedIndex == 0,
+              isSelected: Globals.displayingIndex == 0,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 0, widget.callback(0)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.year,
               icon: Icons.grid_on,
-              isSelected: Globals.selectedIndex == 1,
+              isSelected: Globals.displayingIndex == 1,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 1, widget.callback(1)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.dateConverter,
               icon: Icons.swap_horizontal_circle,
-              isSelected: Globals.selectedIndex == 2,
+              isSelected: Globals.displayingIndex == 2,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 2, widget.callback(2)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.archives,
               icon: Icons.note,
-              isSelected: Globals.selectedIndex == 3,
+              isSelected: Globals.displayingIndex == 3,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 3, widget.callback(3)},
             ),
             Padding(
@@ -76,31 +76,31 @@ class _SideMenuState extends State<SideMenu> {
             SideMenuItem(
               text: AppLocalizations.of(context)!.plans,
               icon: Icons.event_note,
-              isSelected: Globals.selectedIndex == 4,
+              isSelected: Globals.displayingIndex == 5,
               onTap: () => {Globals.selectedIndex = Globals.displayingIndex = 4, widget.callback(5)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.nationalDays,
               icon: Icons.celebration,
-              isSelected: Globals.selectedIndex == 5,
+              isSelected: Globals.displayingIndex == 6,
               onTap: () => {Globals.selectedIndex = 5, Globals.displayingIndex = 4, widget.callback(6)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.aboutApp,
               icon: Icons.info_sharp,
-              isSelected: Globals.selectedIndex == 6,
+              isSelected: Globals.displayingIndex == 7,
               onTap: () => {Globals.selectedIndex = 6, Globals.displayingIndex = 4, widget.callback(7)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.setting,
               icon: Icons.settings,
-              isSelected: Globals.selectedIndex == 7,
+              isSelected: Globals.displayingIndex == 8,
               onTap: () => {Globals.selectedIndex = 7, Globals.displayingIndex = 4, widget.callback(8)},
             ),
             SideMenuItem(
               text: AppLocalizations.of(context)!.termsAndConditions,
               icon: Icons.text_snippet,
-              isSelected: Globals.selectedIndex == 8,
+              isSelected: Globals.displayingIndex == 9,
               onTap: () => {Globals.selectedIndex = 8, Globals.displayingIndex = 4, widget.callback(9)},
             ),
             Padding(
