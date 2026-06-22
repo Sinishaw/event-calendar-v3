@@ -1,7 +1,6 @@
 import 'package:event_calendar_v2/common/geez_numbers.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/main.dart';
-import 'package:event_calendar_v2/screens/home/home_page.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
@@ -56,7 +55,7 @@ class _YearGridState extends State<YearGrid> {
 
   getFirstMonthDayStartIndex() {
     LocalDate gcDate = MonthModel.toGc(year: widget.year!, month: 1, day: 1)!;
-    DateTime gcDateTime = new DateTime(gcDate.year!, gcDate.month!, gcDate.day!);
+    DateTime gcDateTime = DateTime(gcDate.year!, gcDate.month!, gcDate.day!);
     print("Meskerem 1 ${gcDateTime.weekday.toString()}");
     initMonthsStartDay(gcDateTime);
   }
