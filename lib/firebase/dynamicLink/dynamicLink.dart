@@ -8,6 +8,8 @@ import 'dart:convert';
 import 'package:event_calendar_v2/common/constants.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/configs/theme/theme_model.dart';
+import 'package:event_calendar_v2/language/language_change_provider.dart';
+import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +20,7 @@ class FirebaseDynamicLink {
   /// Hard-coded deep link that mimics what Firebase Dynamic Links provided.
   /// Change the company value to whatever your app expects.
   static final Uri hardCodedDeepLink = Uri.parse(
-    'https://example.page.link/?${Constants.CompanyPreference}=ZEMEN',
+    'https://example.page.link/?${Constants.CompanyPreference}=mmcy',
   );
 
   static Future getParametersAndStoreLocally(Uri deepLink, BuildContext context) async {
@@ -45,23 +47,35 @@ class FirebaseDynamicLink {
 
         Globals.prefs!.setString(Constants.CompanyPreference, companyPref);
         Globals.prefs!.setString(Constants.CompanyLogo, companyLogo);
-        Globals.prefs!.setString(Constants.ThemePreference, defaultTheme);
-        Globals.prefs!.setString(Constants.LanguagePreference, defaultLanguage);
+
+        if (Globals.prefs!.getBool(Constants.UserThemeOverride) != true) {
+          Globals.prefs!.setString(Constants.ThemePreference, Utility.normalizeTheme(defaultTheme));
+        }
+
+        if (Globals.prefs!.getBool(Constants.UserLanguageOverride) != true) {
+          Globals.prefs!.setString(Constants.LanguagePreference, defaultLanguage);
+        }
 
         Globals.prefs!.setString(Constants.CompanyDefaultLanguage, defaultLanguage);
         Globals.prefs!.setString(Constants.CompanyDefaultTheme, defaultTheme);
         Globals.prefs!.setString(Constants.MonthImages, monthImages);
 
-        try {
-          String numberFormat = companyThemeSetting[Constants.NumberFormat];
-          Globals.prefs!.setString(Constants.NumberFormat, numberFormat);
-        } catch (e) {
-          debugPrint(e.toString());
-          Globals.prefs!.setString(Constants.NumberFormat, "ግዕዝ");
+        if (Globals.prefs!.getBool(Constants.UserNumberFormatOverride) != true) {
+          try {
+            String numberFormat = companyThemeSetting[Constants.NumberFormat];
+            Globals.prefs!.setString(Constants.NumberFormat, Utility.normalizeNumberFormat(numberFormat));
+          } catch (e) {
+            debugPrint(e.toString());
+            Globals.prefs!.setString(Constants.NumberFormat, "ግዕዝ");
+          }
         }
 
         debugPrint("------ Deep Link Company Default Language:  ($defaultLanguage) THEME($defaultTheme)");
         Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+        if (Globals.prefs!.getBool(Constants.UserLanguageOverride) != true) {
+          Provider.of<LanguageChangeProvider>(context, listen: false)
+              .changeLocal(LanguageChangeProvider().getCurrentLocaleCode());
+        }
 
         Globals.initCompanySettingIfAny();
         Globals.prefs!.remove(Constants.ServiceProviderTermsAndPoliciesVersion);
@@ -86,7 +100,8 @@ class FirebaseDynamicLink {
     String companyFromLink = deepLink.queryParameters[Constants.CompanyPreference]!;
 
     if ((cloudFollowingCompany == null && localCompany == null) ||
-        (cloudFollowingCompany == Constants.DefaultCompany)) {
+        (cloudFollowingCompany == Constants.DefaultCompany) ||
+        (localCompany == Constants.DefaultCompany)) {
                   debugPrint("------ HERE 1 $cloudFollowingCompany");
       Globals.prefs!.setString(Constants.CompanyPreference, companyFromLink);
       await getParametersAndStoreLocally(deepLink, context);

@@ -8,6 +8,7 @@ import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/firebase/cloudMessaging/FcmHandler.dart';
 import 'package:event_calendar_v2/firebase/firestore/firestore.dart';
 import 'package:event_calendar_v2/firebase/remoteConfig/firebase_remote_config.dart';
+import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
@@ -83,13 +84,13 @@ class CompanyModel {
 
   ///After successful read of company list, user will choose one and this method will handle
   ///to read details of user preferred company specifics and store them locally
-  static fetchCompanyPreferredByUser() async {
+  static Future<void> fetchCompanyPreferredByUser() async {
     // String _companyUserPreferred = Globals.prefs.getString(Constants.CompanyUserFollowing);
     String? companyUserPreferred = Globals.prefs!.getString(Constants.CompanyPreference);
     debugPrint("------ Fetching company remote config: $companyUserPreferred");
     if (companyUserPreferred != null && companyUserPreferred.isNotEmpty) {
-      ///TODO: Set logical timeout period to avoid long term waiting
-      FirebaseRC().getRemoteConfig(companyUserPreferred).then((value) {
+      try {
+        String value = await FirebaseRC().getRemoteConfig(companyUserPreferred);
         debugPrint("------ Company config....");
         debugPrint(value);
 
@@ -107,7 +108,7 @@ class CompanyModel {
         Globals.prefs!.setString(Constants.CompanyPreference, company);
         Globals.prefs!.setString(Constants.CompanyLogo, companyLogo);
 
-        if (Globals.prefs!.getString(Constants.LanguagePreference) == null) {
+        if (Globals.prefs!.getBool(Constants.UserLanguageOverride) != true) {
           Globals.prefs!.setString(Constants.LanguagePreference, defaultLanguage);
         }
 
@@ -118,22 +119,21 @@ class CompanyModel {
         Globals.prefs!.setString(Constants.CompanyUserFollowing, companyUserPreferred);
         debugPrint("------ 5: ");
 
-        ///Set theme if only no preference is set before
-        String? currentTheme = Globals.prefs!.getString(Constants.ThemePreference);
-        if (currentTheme == null) {
-          Globals.prefs!.setString(Constants.ThemePreference, defaultTheme);
+        // Guard theme preference from overwriting user's manual selection
+        if (Globals.prefs!.getBool(Constants.UserThemeOverride) != true) {
+          Globals.prefs!.setString(Constants.ThemePreference, Utility.normalizeTheme(defaultTheme));
+        }
 
-          ///Default theme not set indicates company config default is not configured
+        // Guard number format preference from overwriting user's manual selection
+        if (Globals.prefs!.getBool(Constants.UserNumberFormatOverride) != true) {
           try {
-            ///SETTING IS ADDED AFTER FIRST RELEASE & MUST SKIP UNEXPECTED ERRORS
             String numberFormat = companySettings[Constants.NumberFormat];
-            Globals.prefs!.setString(Constants.NumberFormat, numberFormat);
+            Globals.prefs!.setString(Constants.NumberFormat, Utility.normalizeNumberFormat(numberFormat));
           } catch (e) {
             debugPrint(e.toString());
             Globals.prefs!.setString(Constants.NumberFormat, "ግዕዝ");
           }
         }
-        debugPrint("------ 6: $currentTheme");
 
         ///ADD NEW VERSION LOGICS BELOW
         try {
@@ -143,15 +143,12 @@ class CompanyModel {
           // ignore: empty_catches
         } catch (e) {}
 
-        /// TODO: Commented
-        // Localize.initMenuWithSelectedLanguage();
-
         debugPrint("------ 7: ");
-        // Provider.of<ThemeModel>(context, listen: false).toggleTheme();
-      }).onError((dynamic error, stackTrace) {
+      } catch (error) {
         ///TODO: Handle remote config fetch error properly
         ///TODO: Redirect user to error handling page where system can try to resolve the issue.
-      });
+        debugPrint("------ fetchCompanyPreferredByUser error: $error");
+      }
     }
   }
 

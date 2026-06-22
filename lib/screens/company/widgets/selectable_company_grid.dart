@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:event_calendar_v2/common/constants.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/firebase/remoteConfig/firebase_remote_config.dart';
+import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:event_calendar_v2/screens/company/models/company_preference_model.dart';
 import 'package:event_calendar_v2/configs/theme/theme_initializer.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
@@ -145,19 +146,27 @@ class _SelectableCompanyGridState extends State<SelectableCompanyGrid> {
           Globals.prefs!.setString(Constants.CompanyPreference, company);
           Globals.prefs!.setString(Constants.CompanyLogo, companyLogo);
           debugPrint("------ Company Logo: $companyLogo");
-          Globals.prefs!.setString(Constants.ThemePreference, companyDefaultTheme);
-          Globals.prefs!.setString(Constants.LanguagePreference, defaultLanguage);
+
+          if (Globals.prefs!.getBool(Constants.UserThemeOverride) != true) {
+            Globals.prefs!.setString(Constants.ThemePreference, Utility.normalizeTheme(companyDefaultTheme));
+          }
+
+          if (Globals.prefs!.getBool(Constants.UserLanguageOverride) != true) {
+            Globals.prefs!.setString(Constants.LanguagePreference, defaultLanguage);
+          }
           Globals.prefs!.setString(Constants.CompanyDefaultLanguage, defaultLanguage);
           Globals.prefs!.setString(Constants.CompanyDefaultTheme, companyDefaultTheme);
           Globals.prefs!.setString(Constants.MonthImages, monthImages);
 
-          try {
-            ///SETTING IS ADDED AFTER FIRST RELEASE & MUST SKIP UNEXPECTED ERRORS
-            String numberFormat = companySettings[Constants.NumberFormat];
-            Globals.prefs!.setString(Constants.NumberFormat, numberFormat);
-          } catch (e) {
-            debugPrint(e.toString());
-            Globals.prefs!.setString(Constants.NumberFormat, "ግዕዝ");
+          if (Globals.prefs!.getBool(Constants.UserNumberFormatOverride) != true) {
+            try {
+              ///SETTING IS ADDED AFTER FIRST RELEASE & MUST SKIP UNEXPECTED ERRORS
+              String numberFormat = companySettings[Constants.NumberFormat];
+              Globals.prefs!.setString(Constants.NumberFormat, Utility.normalizeNumberFormat(numberFormat));
+            } catch (e) {
+              debugPrint(e.toString());
+              Globals.prefs!.setString(Constants.NumberFormat, "ግዕዝ");
+            }
           }
 
           Globals.prefs!.setString(Constants.MonthImages, monthImages);
@@ -165,8 +174,10 @@ class _SelectableCompanyGridState extends State<SelectableCompanyGrid> {
           Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
 
           ///TODO: This or theme provider may change both. Check and use only one provider
-          Provider.of<LanguageChangeProvider>(context, listen: false)
-              .changeLocal(LanguageChangeProvider().getCurrentLocaleCode());
+          if (Globals.prefs!.getBool(Constants.UserLanguageOverride) != true) {
+            Provider.of<LanguageChangeProvider>(context, listen: false)
+                .changeLocal(LanguageChangeProvider().getCurrentLocaleCode());
+          }
 
           Globals.initMonthsImage();
           Globals.initCompanySettingIfAny();

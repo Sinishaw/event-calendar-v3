@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 class LanguageChangeProvider with ChangeNotifier {
   Locale _currentLocal = const Locale("am");
 
+  LanguageChangeProvider() {
+    _currentLocal = getCurrentLocale();
+  }
+
   Locale get currentLocal => _currentLocal;
   changeLocal(String localCode) {
     _currentLocal = Locale(localCode);
