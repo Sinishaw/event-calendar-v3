@@ -24,8 +24,6 @@ class DailyUserEventList extends StatelessWidget {
 
   final LocalDate? selectedEtDate;
 
-  // final Function swipeAndDeleteTaskCallback;
-
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final List<NotificationPayload> allNotificationPayloadList = [];
   final List<NotificationPayload> filteredNotificationPayloadList = [];
@@ -86,8 +84,6 @@ class DailyUserEventList extends StatelessWidget {
       filteredNotificationPayloadList.addAll(allNotificationPayloadList.where((element) =>
           element.visible == 'true' &&
           element.repeatOption == NotificationRepeatOption.daily &&
-
-          ///Version 2 Update
           element.scheduledDateTime!.isBefore(selectedGcDate.add(const Duration(days: 1)))));
 
       ///Weekly notifications filter
@@ -95,12 +91,7 @@ class DailyUserEventList extends StatelessWidget {
           element.visible == 'true' &&
           element.repeatOption == NotificationRepeatOption.weekly &&
           element.weekday == selectedGcDate.weekday &&
-
-          ///Version 2 Update
           element.scheduledDateTime!.isBefore(selectedGcDate.add(const Duration(days: 1)))));
-
-      debugPrint("------ NOW: ${selectedGcDate.weekday}");
-      debugPrint("------ SCHEDULE ${allNotificationPayloadList[0].weekday}");
     }
   }
 
@@ -138,162 +129,187 @@ class DailyUserEventList extends StatelessWidget {
     } else {
       eventRow = _companyAndTopicContentBuilder(context, payload);
     }
-    return Card(
-      elevation: 0,
-      color: Colors.transparent,
-      child: payload.contentSource != ContentSource.NationalEvent
-          ? Dismissible(
-              key: UniqueKey(),
-              confirmDismiss: (direction) {
-                return showDialog(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          const FaIcon(FontAwesomeIcons.circleInfo),
-                          Center(child: Text(AppLocalizations.of(context)!.confirmDeletion)),
-                        ],
+
+    if (payload.contentSource == ContentSource.NationalEvent) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: eventRow,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Dismissible(
+          key: UniqueKey(),
+          confirmDismiss: (direction) {
+            return showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const FaIcon(FontAwesomeIcons.circleInfo),
+                      Center(child: Text(AppLocalizations.of(context)!.confirmDeletion)),
+                    ],
+                  ),
+                  content: Text('${AppLocalizations.of(context)!.areYouSureYouWantToDelete} (${payload.title})?'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context, rootNavigator: true).pop(false);
+                      },
+                      child: const FaIcon(
+                        FontAwesomeIcons.xmark,
+                        size: 30,
+                        color: Colors.grey,
                       ),
-                      content: Text('${AppLocalizations.of(context)!.areYouSureYouWantToDelete} (${payload.title})?'),
-                      actions: <Widget>[
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context, rootNavigator: true).pop(false);
-                          },
-                          child: const FaIcon(
-                            FontAwesomeIcons.xmark,
-                            size: 30,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context, rootNavigator: true).pop(true);
-                          },
-                          child: const FaIcon(
-                            FontAwesomeIcons.check,
-                            size: 30,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context, rootNavigator: true).pop(true);
+                      },
+                      child: const FaIcon(
+                        FontAwesomeIcons.check,
+                        size: 30,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
                 );
               },
-              behavior: HitTestBehavior.opaque,
-              background: Container(
-                color: Colors.redAccent,
-                child: ListTile(
-                    leading: const Icon(Icons.delete_forever),
-                    title: Text(
-                      "Deleting Task ( ${payload.title} )",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    )),
-              ),
-              direction: DismissDirection.endToStart,
-              dismissThresholds: const {DismissDirection.startToEnd: 0.6, DismissDirection.endToStart: 0.6},
-              onDismissed: (DismissDirection direction) async {
-                if (direction == DismissDirection.endToStart) {
-                  debugPrint("------ Cancellation ${payload.title}");
-                  int notificationId = payload.id!;
-                  int notificationEarlyAlertId = payload.id! + 1;
-                  await NotificationService().cancelNotification(notificationId);
-                  await NotificationService().cancelNotification(notificationEarlyAlertId);
-                } else {
-                  ///TODO: Implement update in the second version of the app
-                  debugPrint("------ Update ${payload.title}");
-                }
-              },
-              child: eventRow,
-            )
-          : _nationalAndPersonalContentBuilder(context, payload),
+            );
+          },
+          behavior: HitTestBehavior.opaque,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.delete_outline_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          direction: DismissDirection.endToStart,
+          onDismissed: (DismissDirection direction) async {
+            if (direction == DismissDirection.endToStart) {
+              debugPrint("------ Cancellation ${payload.title}");
+              int notificationId = payload.id!;
+              int notificationEarlyAlertId = payload.id! + 1;
+              await NotificationService().cancelNotification(notificationId);
+              await NotificationService().cancelNotification(notificationEarlyAlertId);
+            }
+          },
+          child: eventRow,
+        ),
+      ),
     );
   }
 
   _nationalAndPersonalContentBuilder(BuildContext context, NotificationPayload payload) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
+    Color categoryColor;
+    if (payload.eventTagOption == EventTagOption.national) {
+      categoryColor = primaryColor;
+    } else {
+      categoryColor = Globals.categoryColorList[payload.eventTagOption!.index];
+    }
+
     return Container(
-      color: payload.eventTagOption == EventTagOption.national
-          ? Theme.of(context).primaryColor.withOpacity(0.1)
-          : Globals.categoryColorList[payload.eventTagOption!.index].withOpacity(0.1),
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: categoryColor.withOpacity(0.2),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
       child: Row(
-        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 1,
-            child: Container(
-              child: payload.eventTagOption == EventTagOption.national
-                  ? Icon(
-                      Icons.celebration,
-                      size: 20,
-                      color: Theme.of(context).primaryColor,
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      // crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Icon(
-                          Icons.label_important,
-                          size: 40.0,
-                          color: Globals.categoryColorList[payload.eventTagOption!.index],
-                        ),
-                        const Icon(
-                          Icons.notifications,
-                          size: 12.0,
-                        ),
-                        // Icon(
-                        //   payload.scheduleOption != NotificationScheduleOption.noNotification
-                        //       ? Icons.notifications
-                        //       : Icons.notifications_off,
-                        //   size: 12.0,
-                        //   // color: Globals.categoryColorList[payload.eventTagOption.index],
-                        // ),
-                      ],
-                    ),
+          // Category Icon Circle
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: categoryColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              payload.eventTagOption == EventTagOption.national
+                  ? Icons.celebration_rounded
+                  : Icons.label_important_rounded,
+              color: categoryColor,
+              size: 20,
             ),
           ),
+          const SizedBox(width: 12),
+          // Content
           Expanded(
-            flex: 5,
-            child: Container(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  payload.title!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+                if (payload.body != null && payload.body!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    payload.title!,
+                    payload.body!,
                     style: TextStyle(
-                      fontSize: Theme.of(context).textTheme.titleLarge!.fontSize,
+                      fontSize: 12,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      fontStyle: FontStyle.italic,
                     ),
-                  ),
-                  Text(
-                    payload.body != null ? payload.body! : "",
-                    style: TextStyle(
-                        fontSize: Theme.of(context).textTheme.bodyMedium!.fontSize, fontStyle: FontStyle.italic),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            "${_getEventDateTimeDetail(payload)}",
-                            style: TextStyle(fontSize: Globals.deviceHeight! > 700 ? 10 : 8),
-                            softWrap: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(
-                    color: Theme.of(context).primaryColor,
                   ),
                 ],
-              ),
+                const SizedBox(height: 8),
+                // DateTime Row
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 13,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _getEventDateTimeDetail(payload),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.55),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -302,92 +318,148 @@ class DailyUserEventList extends StatelessWidget {
   }
 
   _companyAndTopicContentBuilder(BuildContext context, NotificationPayload payload) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
     return Container(
-      child: Row(
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Container(
-                child: payload.icon != null && payload.icon!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: payload.icon!,
-                        placeholder: (context, url) => ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 200),
-                          child: Container(),
-                        ),
-                        errorWidget: (context, url, error) => const Icon(Icons.broken_image),
-                      )
-                    : const Icon(Icons.broken_image)),
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.15),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          Expanded(
-            flex: 5,
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image / Icon
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
             child: Container(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      payload.title!,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: Theme.of(context).textTheme.titleLarge!.fontSize),
-                    ),
+              width: 44,
+              height: 44,
+              color: primaryColor.withOpacity(0.08),
+              child: payload.icon != null && payload.icon!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: payload.icon!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.image_not_supported_rounded, color: primaryColor, size: 20),
+                    )
+                  : Icon(Icons.business_rounded, color: primaryColor, size: 20),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  payload.title!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
+                ),
+                if (payload.body != null && payload.body!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
                     payload.body!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: Theme.of(context).textTheme.bodyMedium!.fontSize, fontStyle: FontStyle.italic),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "${_getEventDateTimeDetail(payload)}",
-                          style: TextStyle(fontSize: Globals.deviceHeight! > 700 ? 10 : 8),
-                          softWrap: true,
-                        ),
-                        Card(
-                          elevation: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                            child: GestureDetector(
-                              onTap: () {
-                                debugPrint("------ Content is clicked");
-                                if (payload.contentSource == ContentSource.CompanyEvent ||
-                                    payload.contentSource == ContentSource.TopicEvent) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return const CompanyContentPage();
-                                      },
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Text(
-                                "more...",
-                                style: TextStyle(
-                                    fontSize: Globals.deviceHeight! > 700 ? 12 : 10,
-                                    color: Theme.of(context).colorScheme.secondary),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      fontSize: 12,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
-                  Divider(
-                    color: Theme.of(context).primaryColor,
-                  )
                 ],
-              ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 13,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _getEventDateTimeDetail(payload),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.55),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        debugPrint("------ Content is clicked");
+                        if (payload.contentSource == ContentSource.CompanyEvent ||
+                            payload.contentSource == ContentSource.TopicEvent) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) {
+                                return const CompanyContentPage();
+                              },
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          "more...",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.secondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -427,7 +499,7 @@ class DailyUserEventList extends StatelessWidget {
             } else {
               return Padding(
                 ///Give some extra relaxing scroll space
-                padding: const EdgeInsets.only(bottom: 150.0),
+                padding: const EdgeInsets.only(bottom: 120.0),
                 child: _eventImportancePicker(context, filteredNotificationPayloadList[index]),
               );
             }

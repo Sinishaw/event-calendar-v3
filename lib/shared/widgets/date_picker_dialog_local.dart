@@ -1,6 +1,6 @@
-// ignore_for_file: avoid_unnecessary_containers
-
-import 'package:event_calendar_v2/l10n/app_localizations.dart';import 'package:event_calendar_v2/common/geez_numbers.dart';
+import 'package:event_calendar_v2/l10n/app_localizations.dart';
+import 'package:event_calendar_v2/common/geez_numbers.dart';
+import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
@@ -19,17 +19,7 @@ class DatePickerDialogLocal extends StatefulWidget {
 }
 
 class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with TickerProviderStateMixin {
-  //region FIELDS
-  final TextStyle _textStyle = const TextStyle(fontSize: 15);
-
-  final double _itemExtent = 75.0;
-  final double _offAxisFraction = -0.3;
-  final bool _useMagnifier = true;
-  final double _magnification = 1;
-  final double _diameterRatio = 2;
-  final double _squeeze = 1.7;
-  final double _perspective = 0.009;
-  final double _overAndUnderCenterOpacity = 0.4;
+  final TextStyle _textStyle = const TextStyle(fontSize: 14, fontWeight: FontWeight.w600);
 
   int? yearGc;
   int? monthGc;
@@ -54,47 +44,35 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
   late AnimationController animationController;
   late Animation<double> scaleAnimation;
 
-  TabController? _tabController;
-  Widget? etScroll, gcScroll;
   double width = 0, height = 0;
-
-//endregion
   late bool isGeezNumbers;
 
   @override
   void initState() {
-    animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
-    scaleAnimation = CurvedAnimation(parent: animationController, curve: Curves.easeOutSine);
+    animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    scaleAnimation = CurvedAnimation(parent: animationController, curve: Curves.easeOutBack);
     animationController.forward();
 
     _yearScrollController = FixedExtentScrollController();
     _monthScrollController = FixedExtentScrollController();
     _dayScrollController = FixedExtentScrollController();
     calendarType = CalendarType.Ethiopian;
-    initTab();
-    isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
-    super.initState();
-  }
-
-  initTab() {
     initToday();
+    isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       scrollToInitialDay();
     });
+    super.initState();
+  }
 
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
-
-    _tabController!.addListener(() {
-      setState(() {
-        if (_tabController!.index == 0) {
-          calendarType = CalendarType.Ethiopian;
-        } else {
-          calendarType = CalendarType.Gregorian;
-        }
-        initToday();
-        scrollToInitialDay();
-      });
-    });
+  @override
+  void dispose() {
+    animationController.dispose();
+    _yearScrollController?.dispose();
+    _monthScrollController?.dispose();
+    _dayScrollController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -106,70 +84,227 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.dialogBackgroundColor;
+
+    double dialogOpacity = 1.0;
+    try {
+      if (Globals.setting.menuBackgroundOpacity != 0) {
+        dialogOpacity = Globals.setting.menuBackgroundOpacity;
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+
+    final isEthiopian = calendarType == CalendarType.Ethiopian;
+    final pillBg = isDark
+        ? Colors.white.withOpacity(0.08)
+        : primaryColor.withOpacity(0.08);
+
     return Center(
       child: ScaleTransition(
         scale: scaleAnimation,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              height: height / 2.4,
-              width: width / 1.6,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30.0),
-                child: Scaffold(
-                  appBar: AppBar(
-                    bottom: TabBar(
-                      tabs: [
-                        Tab(icon: Text(AppLocalizations.of(context)!.ethiopian)),
-                        Tab(icon: Text("Gregorian")),
-                      ],
-                      controller: _tabController,
-                    ),
-                    title: Center(child: Text(AppLocalizations.of(context)!.pickADate)),
-                    automaticallyImplyLeading: false,
-                  ),
-                  body: TabBarView(
-                    controller: _tabController,
-                    children: [getScrollableDatePicker(), getScrollableDatePicker()],
-                  ),
-                  floatingActionButton: FloatingActionButton(
-                    mini: true,
-                    onPressed: () {
-                      widget.callback(LocalDate.detailed(yearEt, monthEt, dayEt, weekDay),
-                          LocalDate.detailed(yearGc, monthGc, dayGc, weekDay));
-                      Navigator.pop(context);
-                    },
-                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.5),
-                    child: const Icon(
-                      Icons.check,
-                    ),
-                  ),
-                  floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
-                ),
-              ),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(
+              maxWidth: 340,
+              maxHeight: height * 0.46,
             ),
-          ],
+            decoration: BoxDecoration(
+              color: cardBg.withOpacity(dialogOpacity),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: primaryColor.withOpacity(0.18),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// Title
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  child: Text(
+                    AppLocalizations.of(context)!.pickADate,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.secondary,
+                    ),
+                  ),
+                ),
+
+                /// Custom Toggle TABS
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Container(
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: pillBg,
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (calendarType == CalendarType.Ethiopian) return;
+                              setState(() {
+                                calendarType = CalendarType.Ethiopian;
+                                initToday();
+                                scrollToInitialDay();
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: isEthiopian ? primaryColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(19),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  AppLocalizations.of(context)!.ethiopian,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isEthiopian ? Colors.white : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (calendarType == CalendarType.Gregorian) return;
+                              setState(() {
+                                calendarType = CalendarType.Gregorian;
+                                initToday();
+                                scrollToInitialDay();
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: !isEthiopian ? primaryColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(19),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Gregorian",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: !isEthiopian ? Colors.white : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    color: primaryColor.withOpacity(0.12),
+                    height: 1,
+                  ),
+                ),
+
+                /// Scroll wheels picker
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        /// Selection Highlight Overlay
+                        Container(
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(isDark ? 0.15 : 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: primaryColor.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        getScrollableDatePicker(),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    color: primaryColor.withOpacity(0.12),
+                    height: 1,
+                  ),
+                ),
+
+                /// Confirm button
+                 Padding(
+                  padding: const EdgeInsets.only(bottom: 16, top: 8),
+                  child: Center(
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          widget.callback(
+                            LocalDate.detailed(yearEt, monthEt, dayEt, weekDay),
+                            LocalDate.detailed(yearGc, monthGc, dayGc, weekDay),
+                          );
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: const CircleBorder(),
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Icon(Icons.check_rounded, size: 24),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
   initToday() {
-    // DateTime gcDate = new DateTime.now();
     DateTime gcDate =
         DateTime(widget.selectedGcDate!.year!, widget.selectedGcDate!.month!, widget.selectedGcDate!.day!);
     yearGc = gcDate.year;
-    // yearGc = widget.selectedGcDate.year;
     monthGc = gcDate.month - 1;
-    // monthGc = widget.selectedGcDate.month;
     dayGc = gcDate.day;
-    // dayGc = widget.selectedGcDate.day;
     monthNameGc = MonthGlobals.gcMonthsLong[monthGc!];
-
     weekDay = gcDate.weekday;
-
-    // DateTime gcDate = new DateTime(yearGc, monthGc,dayGc);
     weekDayGc = MonthGlobals.gcWeekNamesLong[gcDate.weekday - 1];
 
     LocalDate gcNow = LocalDate.detailed(gcDate.year, gcDate.month, gcDate.day, gcDate.weekday);
@@ -186,7 +321,6 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
     int animationDuration = 200;
     Curve animation = Curves.linear;
     if (calendarType == CalendarType.Ethiopian) {
-      ///If conversion is from Ethiopian to Gregorian
       _yearScrollController!
           .animateToItem(yearEt! - 1900, duration: Duration(milliseconds: animationDuration), curve: animation);
       _monthScrollController!
@@ -194,7 +328,6 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
       _dayScrollController!
           .animateToItem(dayEt! - 1, duration: Duration(milliseconds: animationDuration), curve: animation);
     } else if (calendarType == CalendarType.Gregorian) {
-      ///If conversion is from Gregorian to Ethiopian
       _yearScrollController!
           .animateToItem(yearGc! - 1900, duration: Duration(milliseconds: animationDuration), curve: animation);
       _monthScrollController!
@@ -206,23 +339,21 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
 
   getScrollableDatePicker() {
     return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 20),
-      child: Container(
-        child: Row(children: [
-          Expanded(
-            flex: 1,
-            child: getScrollable(ScrollableType.day),
-          ),
-          Expanded(
-            flex: 2,
-            child: getScrollable(ScrollableType.month),
-          ),
-          Expanded(
-            flex: 1,
-            child: getScrollable(ScrollableType.year),
-          )
-        ]),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(children: [
+        Expanded(
+          flex: 1,
+          child: getScrollable(ScrollableType.day),
+        ),
+        Expanded(
+          flex: 2,
+          child: getScrollable(ScrollableType.month),
+        ),
+        Expanded(
+          flex: 1,
+          child: getScrollable(ScrollableType.year),
+        )
+      ]),
     );
   }
 
@@ -267,7 +398,6 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
       scrollableList = List<Widget>.generate(
         daysInMonth,
         (index) {
-          // print("INDEX:: $index");
           return Align(
               alignment: Alignment.center,
               child: Text(
@@ -283,7 +413,6 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
   }
 
   adjustMonthLengthDifferenceWhileScrolling(ScrollableType scrollableType) {
-    ///Adjustment for pagume due to its days size difference
     if (calendarType == CalendarType.Ethiopian && scrollableType == ScrollableType.month && monthEt == 13) {
       int pagumeLength = !MonthModel.isLeapYear(yearEt) ? 5 : 6;
       if (dayEt! > pagumeLength) {
@@ -292,7 +421,6 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
       }
     }
 
-    ///Adjustment for gregorian days due to different sizes
     if (calendarType == CalendarType.Gregorian) {
       if (monthGc == 0) monthGc = 12;
       int monthLength = MonthModel.getDaysInGcMonth(monthGc! - 1, yearGc);
@@ -306,34 +434,31 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
   getScrollable(ScrollableType scrollableType) {
     adjustMonthLengthDifferenceWhileScrolling(scrollableType);
     List<Widget> scrollableList = getScrollableList(scrollableType);
-    return Container(
-      child: ListWheelScrollView.useDelegate(
-        itemExtent: _itemExtent,
-        useMagnifier: _useMagnifier,
-        magnification: _magnification,
-        offAxisFraction: _offAxisFraction,
-        diameterRatio: _diameterRatio,
-        squeeze: _squeeze,
-        perspective: _perspective,
-        overAndUnderCenterOpacity: _overAndUnderCenterOpacity,
-        physics: const FixedExtentScrollPhysics(),
-        childDelegate: ListWheelChildLoopingListDelegate(
-          children: scrollableList,
-        ),
-        controller: _scrollController,
-        onSelectedItemChanged: (value) {
-          setState(() {
-            calendarType == CalendarType.Ethiopian
-                ? syncEtDayChange(scrollableType, value)
-                : syncGcDayChange(scrollableType, value);
-          });
-        },
+    return ListWheelScrollView.useDelegate(
+      itemExtent: 38,
+      useMagnifier: true,
+      magnification: 1.15,
+      offAxisFraction: -0.2,
+      diameterRatio: 2.0,
+      squeeze: 1.3,
+      perspective: 0.007,
+      overAndUnderCenterOpacity: 0.35,
+      physics: const FixedExtentScrollPhysics(),
+      childDelegate: ListWheelChildLoopingListDelegate(
+        children: scrollableList,
       ),
+      controller: _scrollController,
+      onSelectedItemChanged: (value) {
+        setState(() {
+          calendarType == CalendarType.Ethiopian
+              ? syncEtDayChange(scrollableType, value)
+              : syncGcDayChange(scrollableType, value);
+        });
+      },
     );
   }
 
   syncGcDayChange(ScrollableType scrollableType, int value) {
-    print("Sync GC");
     switch (scrollableType) {
       case ScrollableType.year:
         {
@@ -366,7 +491,6 @@ class _DatePickerDialogLocalState extends State<DatePickerDialogLocal> with Tick
   }
 
   syncEtDayChange(ScrollableType scrollableType, int value) {
-    print("Sync ET");
     switch (scrollableType) {
       case ScrollableType.year:
         {

@@ -181,56 +181,56 @@ class Globals {
     Color backgroundColor = Colors.blueAccent;
     Color textColor = Colors.white;
     Color iconColor = Colors.white;
-    double iconSize = 32.0;
+    double iconSize = 22.0;
     String title = "";
 
     switch (type!) {
       case SnackMessageType.information:
         {
           icon = Icon(
-            Icons.info,
+            Icons.info_outline_rounded,
             color: iconColor,
             size: iconSize,
           );
           textColor = Colors.white;
-          backgroundColor = Colors.blueAccent;
+          backgroundColor = const Color(0xFF3B82F6);
           title = "Notice";
         }
         break;
       case SnackMessageType.success:
         {
           icon = Icon(
-            Icons.check_circle,
+            Icons.check_circle_outline_rounded,
             color: iconColor,
             size: iconSize,
           );
           textColor = Colors.white;
-          backgroundColor = Colors.green.withOpacity(0.95);
+          backgroundColor = const Color(0xFF10B981);
           title = "Success";
         }
         break;
       case SnackMessageType.warning:
         {
           icon = Icon(
-            Icons.warning,
+            Icons.warning_amber_rounded,
             color: iconColor,
             size: iconSize,
           );
-          textColor = Colors.black;
-          backgroundColor = Colors.amber;
-          title = "Warning!";
+          textColor = Colors.white;
+          backgroundColor = const Color(0xFFF59E0B);
+          title = "Warning";
         }
         break;
       case SnackMessageType.error:
         {
           icon = Icon(
-            Icons.error,
+            Icons.error_outline_rounded,
             color: iconColor,
             size: iconSize,
           );
           textColor = Colors.white;
-          backgroundColor = Colors.red;
-          title = "Error!";
+          backgroundColor = const Color(0xFFEF4444);
+          title = "Error";
         }
         break;
       case SnackMessageType.simple:
@@ -238,46 +238,70 @@ class Globals {
           Color? tc = Theme.of(context!).textTheme.bodyLarge!.color;
           textColor = tc!;
           backgroundColor = Theme.of(context).dialogBackgroundColor;
-          // title = message;
         }
         break;
     }
 
     Widget messageContainer = type != SnackMessageType.simple
-        ? ListTile(
-            leading: icon,
-            title: Text(
-              title,
-              style: TextStyle(color: textColor),
-            ),
-            subtitle: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                message!,
-                style: TextStyle(color: textColor),
-              ),
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  icon,
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (title.isNotEmpty) ...[
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: textColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                      ],
+                      Text(
+                        message!,
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           )
-        : ListTile(
-            title: Text(
+        : Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: Text(
               message!,
               textAlign: TextAlign.center,
-              style: TextStyle(color: textColor),
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
             ),
           );
 
     final snackBar = SnackBar(
-      // elevation: 6.0,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-      // behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
       backgroundColor: backgroundColor,
       content: messageContainer,
-      // action: SnackBarAction(
-      //   label: 'X',
-      //   onPressed: () {
-      //     // Some code to undo the change.
-      //   },
-      // ),
+      elevation: 4,
     );
 
     /// Find the ScaffoldMessenger in the widget tree
@@ -460,23 +484,27 @@ class Globals {
     DateTime now = DateTime.now();
     DateTime schedule = DateTime(gcDate.year!, gcDate.month!, gcDate.day!, gcTime.hour!, gcTime.minute!);
 
+    // Round to the nearest minute to prevent off-by-one errors from seconds difference.
     Duration diff = schedule.difference(now);
+    int seconds = diff.inSeconds;
+    int roundedMinutes = (seconds + 30) ~/ 60;
 
-    debugPrint("------ Alarm is set after: $diff");
+    int dayResult = roundedMinutes ~/ (24 * 60);
+    int hourResult = (roundedMinutes % (24 * 60)) ~/ 60;
+    int minuteResult = roundedMinutes % 60;
 
-    int dayResult = diff.inDays;
-    int hourResult;
-    hourResult = diff.inHours;
-    hourResult %= 24;
-    int minuteResult;
-    minuteResult = diff.inMinutes;
-    minuteResult %= 60;
+    debugPrint("------ Alarm is set after: $diff (rounded minutes: $roundedMinutes)");
 
     ///Remove zero values from string message
     String resultString = "$alarmIsSetFor_"
         "${dayResult > 0 ? " $dayResult $days_" : ""}"
         "${hourResult > 0 ? " $hourResult $hour_" : ""}"
         "${minuteResult > 0 ? " $minuteResult $minute_" : ""}";
+
+    // If scheduled very close (less than a minute or exactly on now)
+    if (dayResult == 0 && hourResult == 0 && minuteResult == 0) {
+      resultString = "$alarmIsSetFor_ < 1 $minute_";
+    }
 
     showSnack(context: context, type: type, message: resultString);
   }

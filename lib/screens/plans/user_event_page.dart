@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:event_calendar_v2/l10n/app_localizations.dart';import 'package:event_calendar_v2/common/geez_numbers.dart';
+import 'package:event_calendar_v2/l10n/app_localizations.dart';
+import 'package:event_calendar_v2/common/geez_numbers.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
@@ -81,47 +82,54 @@ class _UserEventPageState extends State<UserEventPage> {
     });
   }
 
-  _resetEntry() {
+  _resetEntry({bool keepDate = false}) {
     ///Set title and note to empty
     _titleTextController.clear();
     _bodyTextController.clear();
+    eventTitle = null;
+    eventNote = null;
 
-    ///Initialize date and time picker to current date and time
-    _selectedEtDate = LocalDate.date();
-    selectedGcDate = LocalDate.date();
+    if (!keepDate) {
+      ///Initialize date and time picker to current date and time
+      _selectedEtDate = LocalDate.date();
+      selectedGcDate = LocalDate.date();
+
+      LocalDate? gcDateConverted;
+      if (widget.selectedEtDate != null) {
+        gcDateConverted = MonthModel.toGc(
+            year: widget.selectedEtDate!.year!, month: widget.selectedEtDate!.month!, day: widget.selectedEtDate!.day!);
+      }
+
+      DateTime gcDate = DateTime.now();
+
+      if (gcDateConverted != null) {
+        gcDate = DateTime(gcDateConverted.year!, gcDateConverted.month!, gcDateConverted.day!);
+      }
+
+      selectedGcDate!.year = gcDate.year;
+      selectedGcDate!.month = gcDate.month;
+      selectedGcDate!.day = gcDate.day;
+      selectedGcDate!.weekDay = gcDate.weekday;
+
+      LocalDate gcNow = LocalDate.detailed(gcDate.year, gcDate.month, gcDate.day, gcDate.weekday);
+      LocalDate etNow = MonthModel.toEc(year: gcNow.year!, month: gcNow.month!, day: gcNow.day!)!;
+
+      _selectedEtDate!.year = etNow.year;
+      _selectedEtDate!.month = etNow.month;
+      _selectedEtDate!.day = etNow.day;
+      _selectedEtDate!.weekDay = gcDate.weekday;
+    }
+
     selectedEtTime = LocalTime.hourMinute12();
     selectedGcTime = LocalTime.hourMinute12();
     selectedGcTime24 = LocalTime.hourMinute24();
 
-    LocalDate? gcDateConverted;
-    if (widget.selectedEtDate != null) {
-      gcDateConverted = MonthModel.toGc(
-          year: widget.selectedEtDate!.year!, month: widget.selectedEtDate!.month!, day: widget.selectedEtDate!.day!);
-    }
-
-    DateTime gcDate = DateTime.now();
-    selectedGcTime24!.hour = gcDate.hour;
-    selectedGcTime24!.minute = gcDate.minute;
+    DateTime gcNowTime = DateTime.now();
+    selectedGcTime24!.hour = gcNowTime.hour;
+    selectedGcTime24!.minute = gcNowTime.minute;
 
     selectedGcTime =
-        LocalTime.hourMinute12(gcDate.hour, gcDate.minute, gcDate.hour < 12 ? TimePeriod.AM : TimePeriod.PM);
-
-    if (gcDateConverted != null) {
-      gcDate = DateTime(gcDateConverted.year!, gcDateConverted.month!, gcDateConverted.day!);
-    }
-
-    selectedGcDate!.year = gcDate.year;
-    selectedGcDate!.month = gcDate.month;
-    selectedGcDate!.day = gcDate.day;
-    selectedGcDate!.weekDay = gcDate.weekday;
-
-    LocalDate gcNow = LocalDate.detailed(gcDate.year, gcDate.month, gcDate.day, gcDate.weekday);
-    LocalDate etNow = MonthModel.toEc(year: gcNow.year!, month: gcNow.month!, day: gcNow.day!)!;
-
-    _selectedEtDate!.year = etNow.year;
-    _selectedEtDate!.month = etNow.month;
-    _selectedEtDate!.day = etNow.day;
-    _selectedEtDate!.weekDay = gcDate.weekday;
+        LocalTime.hourMinute12(gcNowTime.hour, gcNowTime.minute, gcNowTime.hour < 12 ? TimePeriod.AM : TimePeriod.PM);
 
     ///Initialize default category selection [Normal Category]
     selectedEventTag = EventTagOption.regular.index;
@@ -184,179 +192,471 @@ class _UserEventPageState extends State<UserEventPage> {
   }
 
   _dateTimePickerRow() {
-    Color? bc = Theme.of(context).textTheme.bodyLarge!.color;
-    TextStyle ts = TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color);
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
+    final textStyleMain = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: theme.textTheme.bodyLarge?.color,
+    );
+    final textStyleSub = TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.55),
+    );
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        Column(
-          children: [
-            Text(AppLocalizations.of(context)!.date),
-            Card(
-                elevation: 3,
-                shadowColor: Theme.of(context).textTheme.bodyLarge!.color,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12, right: 12),
-                  child: TextButton(
-                    style: const ButtonStyle(),
-                    onPressed: () {
-                      FocusScope.of(context).requestFocus(FocusNode());
-                      showDialog(
-                        context: context,
-                        builder: (_) => DatePickerDialogLocal(
-                            callback: getSelectedDateCallBack,
-                            selectedEtDate: _selectedEtDate,
-                            selectedGcDate: selectedGcDate),
-                      );
-                      debugPrint("------ Date clicked ${MonthGlobals.getCurrentDateEt()}");
-                    },
+        // Date Picker Card
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              FocusScope.of(context).requestFocus(FocusNode());
+              showDialog(
+                context: context,
+                builder: (_) => DatePickerDialogLocal(
+                  callback: getSelectedDateCallBack,
+                  selectedEtDate: _selectedEtDate,
+                  selectedGcDate: selectedGcDate,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cardBg.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: primaryColor.withOpacity(0.12),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.calendar_today_rounded,
+                      color: primaryColor,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_getEtSelectedDateString() ?? MonthGlobals.getCurrentDateEt(), style: ts),
                         Text(
-                          _getGcSelectedDateString() ?? MonthGlobals.getCurrentDateGc(),
-                          style: TextStyle(fontSize: 10, color: bc),
+                          AppLocalizations.of(context)!.date,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor.withOpacity(0.8),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _getEtSelectedDateString() ?? MonthGlobals.getCurrentDateEt(),
+                            style: textStyleMain,
+                          ),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _getGcSelectedDateString() ?? MonthGlobals.getCurrentDateGc(),
+                            style: textStyleSub,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                )),
-          ],
+                ],
+              ),
+            ),
+          ),
         ),
-        Column(
-          children: [
-            Text(AppLocalizations.of(context)!.time),
-            Card(
-              elevation: 3,
-              shadowColor: Theme.of(context).textTheme.bodyLarge!.color,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 12, right: 12),
-                child: TextButton(
-                  onPressed: () {
-                    FocusScope.of(context).requestFocus(FocusNode());
-                    showDialog(
-                        context: context,
-                        builder: (_) {
-                          return TimePickerDialogLocal(
-                              timeSetterCallback: getSelectedTimeCallBack, initialGcTime: selectedGcTime);
-                        });
-                  },
-                  child: Column(
-                    children: [
-                      Text(_getEtSelectedTimeString(), style: ts),
-                      Text(
-                        _getGcSelectedTimeString(),
-                        style: TextStyle(fontSize: 10, color: bc!),
-                      ),
-                    ],
-                  ),
+        const SizedBox(width: 12),
+        // Time Picker Card
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              FocusScope.of(context).requestFocus(FocusNode());
+              showDialog(
+                context: context,
+                builder: (_) => TimePickerDialogLocal(
+                  timeSetterCallback: getSelectedTimeCallBack,
+                  initialGcTime: selectedGcTime,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cardBg.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: primaryColor.withOpacity(0.12),
+                  width: 1,
                 ),
               ),
-            )
-          ],
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.access_time_rounded,
+                      color: primaryColor,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.time,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor.withOpacity(0.8),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _getEtSelectedTimeString(),
+                            style: textStyleMain,
+                          ),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _getGcSelectedTimeString(),
+                            style: textStyleSub,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
   _eventImportancePicker() {
-    return Card(
-      elevation: 0,
-      color: Globals.categoryColorList[selectedEventTag!].withOpacity(0.1),
-      child: ListTile(
-        leading: Icon(
-          Icons.label_important,
-          size: 32.0,
-          color: Globals.categoryColorList[selectedEventTag!],
+    final theme = Theme.of(context);
+    final selectedColor = Globals.categoryColorList[selectedEventTag!];
+    final cardBg = theme.cardColor;
+
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).requestFocus(FocusNode());
+        showDialog(
+          context: context,
+          builder: (_) => EventCategoryPicker(
+            selectedOption: selectedEventTag,
+            callback: getSelectedCategoryCallBack,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardBg.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selectedColor.withOpacity(0.2),
+            width: 1,
+          ),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              AppLocalizations.of(context)!.importanceTag,
-              style: const TextStyle(fontSize: 20),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: selectedColor.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.label_important_rounded,
+                size: 16,
+                color: selectedColor,
+              ),
             ),
-            Text(
-              Globals.categoryList[selectedEventTag!],
-              style: const TextStyle(fontSize: 14),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.importanceTag.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    Globals.categoryList[selectedEventTag!],
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        onTap: () {
-          FocusScope.of(context).requestFocus(FocusNode());
-          showDialog(
-              context: context,
-              builder: (_) {
-                return EventCategoryPicker(
-                  selectedOption: selectedEventTag,
-                  callback: getSelectedCategoryCallBack,
-                );
-              });
-        },
       ),
     );
   }
 
   _repeatNotificationPicker() {
-    return Card(
-      elevation: 0,
-      child: ListTile(
-        leading: const Icon(Icons.repeat, size: 32.0),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).requestFocus(FocusNode());
+        showDialog(
+          context: context,
+          builder: (_) => NotificationRepeatPicker(
+            selectedOption: selectedRepeatOption,
+            callback: getSelectedRecurrenceCallBack,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardBg.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: primaryColor.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: Row(
           children: [
-            Text(
-              AppLocalizations.of(context)!.repeatNotification,
-              style: const TextStyle(fontSize: 20),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.repeat_rounded,
+                size: 16,
+                color: primaryColor,
+              ),
             ),
-            Text(
-              Globals.notificationRepeatOptionList[selectedRepeatOption!],
-              style: const TextStyle(fontSize: 14),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.repeatNotification.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    Globals.notificationRepeatOptionList[selectedRepeatOption!],
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        onTap: () {
-          FocusScope.of(context).requestFocus(FocusNode());
-          showDialog(
-              context: context,
-              builder: (_) {
-                return NotificationRepeatPicker(
-                    selectedOption: selectedRepeatOption, callback: getSelectedRecurrenceCallBack);
-              });
-        },
       ),
     );
   }
 
   _notificationSchedulePicker() {
-    return Card(
-      elevation: 0,
-      child: ListTile(
-        leading: const Icon(Icons.notifications, size: 32.0),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).requestFocus(FocusNode());
+        showDialog(
+          context: context,
+          builder: (_) => NotificationSchedulePicker(
+            selectedOption: selectedNotificationSchedule,
+            callback: getSelectedNotificationScheduleCallBack,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardBg.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: primaryColor.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: Row(
           children: [
-            Text(
-              AppLocalizations.of(context)!.scheduleNotification,
-              style: const TextStyle(fontSize: 20),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.notifications_active_rounded,
+                size: 16,
+                color: primaryColor,
+              ),
             ),
-            Text(
-              Globals.notificationScheduleOptionList[selectedNotificationSchedule!],
-              style: const TextStyle(fontSize: 14),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.scheduleNotification.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    Globals.notificationScheduleOptionList[selectedNotificationSchedule!],
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        onTap: () {
-          FocusScope.of(context).requestFocus(FocusNode());
-          showDialog(
-              context: context,
-              builder: (_) {
-                return NotificationSchedulePicker(
-                  selectedOption: selectedNotificationSchedule,
-                  callback: getSelectedNotificationScheduleCallBack,
-                );
-              });
-        },
+      ),
+    );
+  }
+
+  _activeSelectedDateCard() {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.today_rounded,
+              size: 16,
+              color: primaryColor,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "SELECTED DATE",
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: primaryColor.withOpacity(0.7),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    isGeezNumbers
+                        ? "${GeezNumbers.geezNumbers[_selectedEtDate!.day! - 1]} ${MonthGlobals.etWeekNamesLong[selectedGcDate!.weekDay! - 1]}"
+                        : "${_selectedEtDate!.day! > 9 ? "${_selectedEtDate!.day}" : "0${_selectedEtDate!.day}"} ${MonthGlobals.etWeekNamesLong[selectedGcDate!.weekDay! - 1]}",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -380,8 +680,6 @@ class _UserEventPageState extends State<UserEventPage> {
       Globals.showSnack(
         context: context,
         type: SnackMessageType.warning,
-
-        ///TODO: Get message from language config file
         message: message,
       );
     }
@@ -441,7 +739,7 @@ class _UserEventPageState extends State<UserEventPage> {
                 payload: stringJsonPayload,
                 notificationSource: null);
 
-            ///Update slide up holiday at home page month view
+            ///Update holiday view on home page month view
             if (widget.fetchLatestEventsCallback != null) widget.fetchLatestEventsCallback!();
           }
           break;
@@ -488,7 +786,7 @@ class _UserEventPageState extends State<UserEventPage> {
           gcDate: selectedGcDate!,
           gcTime: selectedGcTime24!,
           etDate: _selectedEtDate);
-      _resetEntry();
+      _resetEntry(keepDate: true);
     });
   }
 
@@ -522,93 +820,161 @@ class _UserEventPageState extends State<UserEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    Color? tc = Theme.of(context).textTheme.bodyLarge!.color;
-    MediaQueryData queryData;
-    queryData = MediaQuery.of(context);
-    double height = queryData.size.height - AppBar().preferredSize.height;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+
+    MediaQueryData queryData = MediaQuery.of(context);
+    double availableHeight = queryData.size.height - AppBar().preferredSize.height - queryData.padding.top;
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.addNewEventOrTask),
-        actions: [
-          Padding(
-              padding: const EdgeInsets.only(right: 5.0),
-              child: Card(
-                child: TextButton.icon(
-                    onPressed: () => _saveEvent(),
-                    onLongPress: () => NotificationService().cancelAllNotifications(),
-                    icon: Icon(
-                      Icons.save,
-                      color: tc,
-                    ),
-                    label: Text(
-                      AppLocalizations.of(context)!.save,
-                      style: TextStyle(color: tc, fontSize: 10),
-                    )),
-              ))
-        ],
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.title),
-              title: TextField(
-                controller: _titleTextController,
-                decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context)!.titleRequired,
-                  suffixIcon: IconButton(
-                    onPressed: () => _titleTextController.clear(),
-                    icon: const Icon(Icons.clear),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  // Title text input
+                  TextField(
+                    controller: _titleTextController,
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context)!.titleRequired,
+                      prefixIcon: Icon(Icons.title_rounded, color: primaryColor.withOpacity(0.7)),
+                      suffixIcon: IconButton(
+                        onPressed: () => _titleTextController.clear(),
+                        icon: const Icon(Icons.clear_rounded, size: 18),
+                      ),
+                      filled: true,
+                      fillColor: isDark ? Colors.white.withOpacity(0.04) : primaryColor.withOpacity(0.04),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: primaryColor.withOpacity(0.12), width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: primaryColor, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onChanged: (value) => eventTitle = value,
                   ),
-                ),
-                onChanged: (value) => eventTitle = value,
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.note),
-              title: TextField(
-                controller: _bodyTextController,
-                keyboardType: TextInputType.multiline,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context)!.note,
-                  suffixIcon: IconButton(
-                    onPressed: () => _bodyTextController.clear(),
-                    icon: const Icon(Icons.clear),
+                  const SizedBox(height: 12),
+                  // Note text input
+                  TextField(
+                    controller: _bodyTextController,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context)!.note,
+                      prefixIcon: Icon(Icons.notes_rounded, color: primaryColor.withOpacity(0.7)),
+                      suffixIcon: IconButton(
+                        onPressed: () => _bodyTextController.clear(),
+                        icon: const Icon(Icons.clear_rounded, size: 18),
+                      ),
+                      filled: true,
+                      fillColor: isDark ? Colors.white.withOpacity(0.04) : primaryColor.withOpacity(0.04),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: primaryColor.withOpacity(0.12), width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: primaryColor, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onChanged: (value) => eventNote = value,
                   ),
-                ),
-                onChanged: (value) => eventNote = value,
+                  const SizedBox(height: 16),
+                  
+                  // Row 1: Date & Time Pickers
+                  _dateTimePickerRow(),
+                  const SizedBox(height: 12),
+                  
+                  // Row 2: Category (Importance) & Alert Schedule
+                  Row(
+                    children: [
+                      Expanded(child: _eventImportancePicker()),
+                      const SizedBox(width: 12),
+                      Expanded(child: _notificationSchedulePicker()),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Row 3: Repeat Recurrence & Selected Active Date Badge
+                  Row(
+                    children: [
+                      Expanded(child: _repeatNotificationPicker()),
+                      const SizedBox(width: 12),
+                      Expanded(child: _activeSelectedDateCard()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // List Header
+                  Row(
+                    children: [
+                      Text(
+                        "PLAN LIST FOR THE DAY",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: primaryColor,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Divider(
+                          color: primaryColor.withOpacity(0.15),
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Daily events list
+                  SizedBox(
+                    height: availableHeight / 2.2,
+                    child: DailyUserEventList(
+                      selectedEtDate: _selectedEtDate,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Divider(),
-            _dateTimePickerRow(),
-            _eventImportancePicker(),
-            _notificationSchedulePicker(),
-            _repeatNotificationPicker(),
-            Card(
-                elevation: 3,
-                shadowColor: Theme.of(context).textTheme.bodyLarge!.color,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 20, right: 20),
-                  child: Text(
-                      isGeezNumbers
-                          ? "${GeezNumbers.geezNumbers[_selectedEtDate!.day! - 1]} ${MonthGlobals.etWeekNamesLong[selectedGcDate!.weekDay! - 1]}"
-                          : "${_selectedEtDate!.day! > 9 ? "${_selectedEtDate!.day}" : "0${_selectedEtDate!.day}"} ${MonthGlobals.etWeekNamesLong[selectedGcDate!.weekDay! - 1]}",
-                      style: Theme.of(context).textTheme.headlineSmall),
-                )),
-            const Divider(),
-            SizedBox(
-              height: height / 3,
-              child: DailyUserEventList(
-                selectedEtDate: _selectedEtDate,
-                // swipeAndDeleteTaskCallback: swipeAndDeleteTaskCallback,
-              ),
-            ),
-          ],
+          );
+        },
+      ),
+      floatingActionButton: GestureDetector(
+        onLongPress: () => NotificationService().cancelAllNotifications(),
+        child: FloatingActionButton(
+          onPressed: () => _saveEvent(),
+          backgroundColor: primaryColor,
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.save_rounded, color: Colors.white, size: 24),
         ),
       ),
+      floatingActionButtonLocation: const _CustomFABLocation(),
     );
   }
 
@@ -618,7 +984,6 @@ class _UserEventPageState extends State<UserEventPage> {
       setState(
         () {
           //Not implemented
-          /// TODO: Notify user that the notification is not enabled
         },
       );
     }
@@ -627,20 +992,24 @@ class _UserEventPageState extends State<UserEventPage> {
   @override
   void initState() {
     super.initState();
-
-    ///TODO: It is important to add a page to inform user what notifications mean before poping the allow dialog
-    // isAndroidGranted();
     NotificationService().requestPermissions();
-
     isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
-    _resetEntry();
+    _resetEntry(keepDate: false);
   }
 
   @override
   void dispose() {
-    ///TODO: Commented
-    // LocalNotification.didReceiveLocalNotificationSubject.close();
-    // LocalNotification.selectNotificationSubject.close();
     super.dispose();
+  }
+}
+
+class _CustomFABLocation extends FloatingActionButtonLocation {
+  const _CustomFABLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final Offset standardOffset = FloatingActionButtonLocation.endFloat.getOffset(scaffoldGeometry);
+    // Shift it down by 14 pixels to place it right at the top of the bottom menu with little space
+    return Offset(standardOffset.dx, standardOffset.dy + 14);
   }
 }
