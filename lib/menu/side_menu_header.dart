@@ -28,19 +28,21 @@ class SideMenuHeader extends StatelessWidget {
       bannerImage = const AssetImage("assets/images/splash_image.png");
     }
 
-    return Opacity(
-      opacity: opacity,
-      child: DrawerHeader(
-          margin: EdgeInsets.zero,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(
-              image: DecorationImage(image: bannerImage, fit: isDefaultCompany! ? BoxFit.contain : BoxFit.cover)),
-          child: const Stack(children: <Widget>[
-            Positioned(
-                bottom: 12.0,
-                left: 16.0,
-                child: Text("", style: TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.w500))),
-          ])),
-    );
+    return DrawerHeader(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        decoration: BoxDecoration(
+            color: Colors.transparent,
+            image: DecorationImage(
+              image: bannerImage,
+              fit: isDefaultCompany! ? BoxFit.contain : BoxFit.cover,
+              opacity: opacity,
+            )),
+        child: const Stack(children: <Widget>[
+          Positioned(
+              bottom: 12.0,
+              left: 16.0,
+              child: Text("", style: TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.w500))),
+        ]));
   }
 }
