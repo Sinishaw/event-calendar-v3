@@ -354,4 +354,17 @@ class Utility {
     debugPrint("------ Cache Topics Subscriptions: $topics");
     CompanyContentModel().cacheUserRelatedContents(company, topics);
   }
+
+  static String normalizeTheme(String? backendTheme) {
+    if (backendTheme == 'dark' || backendTheme == 'Dark') return 'Dark';
+    if (backendTheme == 'light' || backendTheme == 'Light') return 'Light';
+    if (backendTheme == 'system') return 'Dark'; // Default to Dark for system theme
+    return 'Dark';
+  }
+
+  static String normalizeNumberFormat(String? backendFormat) {
+    if (backendFormat == 'english' || backendFormat == 'Eng') return 'Eng';
+    if (backendFormat == 'geez' || backendFormat == 'ግዕዝ') return 'ግዕዝ';
+    return 'ግዕዝ';
+  }
 }

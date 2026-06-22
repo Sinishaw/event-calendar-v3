@@ -99,6 +99,7 @@ class _SettingPageState extends State<SettingPage> {
                       }
                   }
                   Globals.prefs!.setString(Constants.LanguagePreference, language!);
+                  Globals.prefs!.setBool(Constants.UserLanguageOverride, true);
                   Provider.of<LanguageChangeProvider>(context, listen: false).changeLocal(languageCode);
                 });
               },
@@ -280,6 +281,7 @@ class _SettingPageState extends State<SettingPage> {
     } else {
       Globals.prefs!.setString(Constants.ThemePreference, 'Light');
     }
+    Globals.prefs!.setBool(Constants.UserThemeOverride, true);
     setState(() {
       _theme = Utility.getAppTheme();
       for (int i = 0; i < _themeSelections.length; i++) {
@@ -295,6 +297,7 @@ class _SettingPageState extends State<SettingPage> {
     } else {
       Globals.prefs!.setString(Constants.NumberFormat, 'Eng');
     }
+    Globals.prefs!.setBool(Constants.UserNumberFormatOverride, true);
     setState(() {
       _numberFormat = Utility.getNumberFormat();
       for (int i = 0; i < _numberFormatSelections.length; i++) {

@@ -51,4 +51,8 @@ class Constants {
   static const String CompanyCategoryField = "category";
 
   static const String DynamicLinkCompany = "DynamicLinkCompany";
+  static const String UserLanguageOverride = "UserLanguageOverride";
+  static const String UserThemeOverride = "UserThemeOverride";
+  static const String UserNumberFormatOverride = "UserNumberFormatOverride";
 }
+
