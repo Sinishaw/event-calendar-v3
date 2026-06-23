@@ -219,9 +219,6 @@ class AppLocalizationsTe extends AppLocalizations {
   String get labaderoch => 'መዓልቲ ሰራሕተኛታት ';
 
   @override
-  String get ginbot20 => 'መዓልቲ ውድቀት ደርጊ';
-
-  @override
   String get eidAlFitur => 'በዓል ዒድ አልፈጥር';
 
   @override

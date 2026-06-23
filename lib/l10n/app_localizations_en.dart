@@ -219,9 +219,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labaderoch => 'Labour Day';
 
   @override
-  String get ginbot20 => 'Derg Downfall Day';
-
-  @override
   String get eidAlFitur => 'Eid ul-Fitr';
 
   @override

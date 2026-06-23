@@ -40,7 +40,6 @@ enum EthiopianFixedHoliday {
   mewlid,
   eidAlAdha,
   adwa,
-  ginbot20,
   arbegnoch,
   labaderoch
 }

@@ -219,9 +219,6 @@ class AppLocalizationsOr extends AppLocalizations {
   String get labaderoch => 'Guyyaa Dafqaan Bultootaa';
 
   @override
-  String get ginbot20 => 'Guyyaa Kufaatii Dargii ';
-
-  @override
   String get eidAlFitur => 'Ayyaana Iid-Alfaxir';
 
   @override

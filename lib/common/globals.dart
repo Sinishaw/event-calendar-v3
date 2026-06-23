@@ -321,7 +321,6 @@ class Globals {
     AppLocalizations.of(context!)!.mewlid,
     AppLocalizations.of(context!)!.eidAlAdha,
     AppLocalizations.of(context!)!.adwa,
-    AppLocalizations.of(context!)!.ginbot20,
     AppLocalizations.of(context!)!.arbegnoch,
     AppLocalizations.of(context!)!.labaderoch,
   ];
@@ -338,7 +337,6 @@ class Globals {
     "Description ... የመውሊድ በዓል",
     "Description ... የኢድ አልአድሀ/አረፋ/ በዓል",
     "Description ... የአድዋ ድል በዓል",
-    "Description ... ደርግ የወደቀበት ቀን",
     "Description ... የአርበኞች የድል ቀን",
     "Description ... የላባደሮች ቀን"
   ];
@@ -553,7 +551,6 @@ class Globals {
       AppLocalizations.of(context!)!.mewlid,
       AppLocalizations.of(context!)!.eidAlAdha,
       AppLocalizations.of(context!)!.adwa,
-      AppLocalizations.of(context!)!.ginbot20,
       AppLocalizations.of(context!)!.arbegnoch,
       AppLocalizations.of(context!)!.labaderoch
     ];
