@@ -233,8 +233,8 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                   children: [
                     swipeMonthSwitcher(context),
                     DraggableScrollableSheet(
-                      initialChildSize: 0.1,
-                      minChildSize: 0.1,
+                      initialChildSize: 0.06,
+                      minChildSize: 0.06,
                       maxChildSize: 0.95,
                       builder: (BuildContext context, scrollController) {
                         final theme = Theme.of(context);
@@ -272,7 +272,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                                 // Persistent Drag Handle Pill as index 0 of the scrollable list
                                 return Center(
                                   child: Container(
-                                    margin: const EdgeInsets.symmetric(vertical: 12),
+                                    margin: const EdgeInsets.only(top: 2, bottom: 10),
                                     width: 44,
                                     height: 5,
                                     decoration: BoxDecoration(
@@ -288,7 +288,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                                 return const SizedBox.shrink();
                               }
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
+                                padding: const EdgeInsets.only(bottom: 12.0),
                                 child: _eventImportancePicker(context, payload),
                               );
                             },
@@ -749,7 +749,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -757,8 +757,8 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              width: 30,
-              height: 30,
+              width: 38,
+              height: 38,
               color: primaryColor.withOpacity(0.08),
               child: payload.icon != null && payload.icon!.isNotEmpty
                   ? CachedNetworkImage(
@@ -766,20 +766,20 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Center(
                         child: SizedBox(
-                          width: 12,
-                          height: 12,
+                          width: 16,
+                          height: 16,
                           child: CircularProgressIndicator(
-                            strokeWidth: 1.2,
+                            strokeWidth: 1.5,
                             valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                           ),
                         ),
                       ),
-                      errorWidget: (context, url, error) => Icon(Icons.image_not_supported_rounded, color: primaryColor, size: 14),
+                      errorWidget: (context, url, error) => Icon(Icons.image_not_supported_rounded, color: primaryColor, size: 18),
                     )
-                  : Icon(Icons.business_rounded, color: primaryColor, size: 14),
+                  : Icon(Icons.business_rounded, color: primaryColor, size: 18),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           // Content
           Expanded(
             child: Column(
@@ -791,38 +791,38 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 if (payload.body != null && payload.body!.isNotEmpty) ...[
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 2),
                   Text(
                     payload.body!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       color: theme.textTheme.bodyMedium?.color?.withOpacity(0.65),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(
                       Icons.access_time_rounded,
-                      size: 10,
+                      size: 12,
                       color: theme.textTheme.bodyMedium?.color?.withOpacity(0.45),
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         _getEventDateTimeDetail(payload),
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w500,
                           color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                         ),
@@ -834,7 +834,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               ],
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           // Trailing Chevron Icon
           GestureDetector(
             onTap: () {
@@ -851,14 +851,14 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               }
             },
             child: Container(
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: theme.colorScheme.secondary.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.chevron_right_rounded,
-                size: 16,
+                size: 18,
                 color: theme.colorScheme.secondary,
               ),
             ),
@@ -893,14 +893,14 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Icon Badge
           Container(
-            width: 30,
-            height: 30,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: categoryColor.withOpacity(0.12),
               shape: BoxShape.circle,
@@ -910,10 +910,10 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                   ? Icons.celebration_rounded
                   : Icons.label_important_rounded,
               color: categoryColor,
-              size: 14,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           // Content
           Expanded(
             child: Column(
@@ -923,39 +923,39 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                 Text(
                   payload.title!,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 if (payload.body != null && payload.body!.isNotEmpty) ...[
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 2),
                   Text(
                     payload.body!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       color: theme.textTheme.bodyMedium?.color?.withOpacity(0.65),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 // DateTime Row
                 Row(
                   children: [
                     Icon(
                       Icons.access_time_rounded,
-                      size: 10,
+                      size: 12,
                       color: theme.textTheme.bodyMedium?.color?.withOpacity(0.45),
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         _getEventDateTimeDetail(payload),
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w500,
                           color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                         ),
@@ -967,7 +967,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               ],
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           // Trailing Chevron Icon
           GestureDetector(
             onTap: () {
@@ -1000,14 +1000,14 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               }
             },
             child: Container(
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: theme.colorScheme.secondary.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.chevron_right_rounded,
-                size: 16,
+                size: 18,
                 color: theme.colorScheme.secondary,
               ),
             ),
