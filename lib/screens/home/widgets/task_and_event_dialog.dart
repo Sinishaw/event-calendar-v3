@@ -63,6 +63,11 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = theme.primaryColor;
+    final onSurface = theme.colorScheme.onSurface;
+
     LocalDate etSelectedDate = LocalDate.date(MonthGlobals.etShowingYear, MonthGlobals.etShowingMonth, widget.etDay);
     return Center(
       child: ScaleTransition(
@@ -72,96 +77,177 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
           children: [
             Container(
               height: MediaQuery.of(context).size.height / 1.6,
-              width: MediaQuery.of(context).size.width / 1.3,
-              decoration: ShapeDecoration(
-                  color: Theme.of(context).dialogBackgroundColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0))),
-              child: Column(children: [
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                          flex: 0,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isGeezNumbers
-                                              ? GeezNumbers.geezNumbers[widget.etDay! - 1]
-                                              : "${widget.etDay! > 9 ? widget.etDay : "0${widget.etDay}"}",
-                                          style: TextStyle(fontSize: 40, color: Theme.of(context).primaryColor),
-                                        ),
-                                        Text(
-                                          " $weekDay - ${MonthGlobals.etMonthsLong[MonthGlobals.etShowingMonth! - 1]} ${isGeezNumbers ? GeezNumbers.geezNumbers[widget.etDay! - 1] : widget.etDay}, ${isGeezNumbers ? GeezNumbers.geezYears[MonthGlobals.etShowingYear! - 1900] : MonthGlobals.etShowingYear}",
-                                          style: TextStyle(fontSize: 10, color: Theme.of(context).primaryColor),
-                                        ),
-                                      ],
-                                    ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text("${widget.gcDay}",
-                                            style: TextStyle(fontSize: 40, color: Theme.of(context).primaryColor)),
-                                        Text(
-                                          " $weekDayGc - ${MonthGlobals.gcMonthsShort[gcDate!.month! - 1]} ${gcDate!.day}, ${gcDate!.year}",
-                                          style: TextStyle(fontSize: 10, color: Theme.of(context).primaryColor),
-                                        ),
-                                      ],
-                                    )
-                                  ],
-                                ),
-                              ],
-                            ),
-                          )),
-                      const Divider(),
-                      Expanded(
-                        flex: 1,
-                        child: DailyUserEventList(selectedEtDate: etSelectedDate),
-                      )
-                    ],
+              width: MediaQuery.of(context).size.width / 1.18,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: primary.withValues(alpha: 0.18),
+                    blurRadius: 28,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 15.0),
-                      child: Card(
-                        elevation: 0,
-                        child: InkWell(
-                            onTap: () {
-                              LocalDate selectedEtDate =
-                                  LocalDate.date(MonthGlobals.etShowingYear, MonthGlobals.etShowingMonth, widget.etDay);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) {
-                                    FirebaseLogger.logGlobalScreenView(4);
-                                    FirebaseLogger.logCompanyScreenView(4);
-                                    return UserEventPage(
-                                        title: "User Events",
-                                        selectedEtDate: selectedEtDate,
-                                        fetchLatestEventsCallback: widget.fetchLatestEventsCallback);
-                                  },
-                                ),
-                              );
-                            },
-                            child: Icon(Icons.add_circle, size: 48, color: Theme.of(context).primaryColor)),
+                    // ── Gradient Header ──────────────────────────────────
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            primary.withValues(alpha: isDark ? 0.55 : 0.18),
+                            primary.withValues(alpha: isDark ? 0.28 : 0.06),
+                          ],
+                        ),
                       ),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // ET date block
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isGeezNumbers
+                                    ? GeezNumbers.geezNumbers[widget.etDay! - 1]
+                                    : "${widget.etDay! > 9 ? widget.etDay : "0${widget.etDay}"}",
+                                style: TextStyle(
+                                  fontSize: 44,
+                                  fontWeight: FontWeight.w800,
+                                  color: primary,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              // Weekday + Month chip row
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: primary.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: primary.withValues(alpha: 0.35),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      weekDay ?? '',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: primary,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "${MonthGlobals.etMonthsLong[MonthGlobals.etShowingMonth! - 1]}, ${isGeezNumbers ? GeezNumbers.geezYears[MonthGlobals.etShowingYear! - 1900] : MonthGlobals.etShowingYear}",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: onSurface.withValues(alpha: 0.55),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          const Spacer(),
+
+                          // GC date block + plus button
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Plus icon button
+                              GestureDetector(
+                                onTap: () {
+                                  LocalDate selectedEtDate = LocalDate.date(
+                                      MonthGlobals.etShowingYear, MonthGlobals.etShowingMonth, widget.etDay);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        FirebaseLogger.logGlobalScreenView(4);
+                                        FirebaseLogger.logCompanyScreenView(4);
+                                        return UserEventPage(
+                                            title: "User Events",
+                                            selectedEtDate: selectedEtDate,
+                                            fetchLatestEventsCallback: widget.fetchLatestEventsCallback);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: primary.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: primary.withValues(alpha: 0.35),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Icon(Icons.add_rounded, size: 20, color: primary),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // GC date
+                              Text(
+                                "${widget.gcDay}",
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w700,
+                                  color: onSurface.withValues(alpha: 0.55),
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                "$weekDayGc · ${MonthGlobals.gcMonthsShort[gcDate!.month! - 1]} ${gcDate!.year}",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: onSurface.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ── Thin accent divider ──────────────────────────────
+                    Container(
+                      height: 1.5,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            primary.withValues(alpha: 0.6),
+                            primary.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // ── Event list ───────────────────────────────────────
+                    Expanded(
+                      child: DailyUserEventList(selectedEtDate: etSelectedDate),
                     ),
                   ],
                 ),
-              ]),
+              ),
             ),
           ],
         ),
