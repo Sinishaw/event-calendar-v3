@@ -939,6 +939,18 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to delete?'**
   String get areYouSureYouWantToDelete;
 
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
   /// No description provided for @tapAgainToExit.
   ///
   /// In en, this message translates to:

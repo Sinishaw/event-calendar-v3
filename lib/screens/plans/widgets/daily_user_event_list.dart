@@ -17,7 +17,7 @@ import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 
 class DailyUserEventList extends StatelessWidget {
   DailyUserEventList({super.key, this.selectedEtDate});
@@ -144,41 +144,186 @@ class DailyUserEventList extends StatelessWidget {
         child: Dismissible(
           key: UniqueKey(),
           confirmDismiss: (direction) {
-            return showDialog(
+            return showDialog<bool>(
               context: context,
+              barrierColor: Colors.black54,
               builder: (context) {
-                return AlertDialog(
-                  title: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      const FaIcon(FontAwesomeIcons.circleInfo),
-                      Center(child: Text(AppLocalizations.of(context)!.confirmDeletion)),
-                    ],
+                final theme = Theme.of(context);
+                final primary = theme.primaryColor;
+                final isDark = theme.brightness == Brightness.dark;
+                final onSurface = theme.colorScheme.onSurface;
+
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  child: Container(
+                    width: 300,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primary.withValues(alpha: 0.18),
+                          blurRadius: 28,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── Gradient accent header ─────────────────────
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.redAccent.withValues(alpha: isDark ? 0.45 : 0.15),
+                                  Colors.redAccent.withValues(alpha: isDark ? 0.20 : 0.05),
+                                ],
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                // Delete icon in circle
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.redAccent.withValues(alpha: 0.35),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.redAccent,
+                                    size: 26,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  AppLocalizations.of(context)!.confirmDeletion,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // ── Thin accent divider ────────────────────────
+                          Container(
+                            height: 1,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.redAccent.withValues(alpha: 0.5),
+                                  Colors.redAccent.withValues(alpha: 0.0),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // ── Body text ──────────────────────────────────
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                            child: Text(
+                              '${AppLocalizations.of(context)!.areYouSureYouWantToDelete} "${payload.title}"?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: onSurface.withValues(alpha: 0.65),
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                          // ── Action buttons ─────────────────────────────
+                          Container(
+                            height: 1,
+                            color: onSurface.withValues(alpha: 0.08),
+                          ),
+                          IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                // Cancel
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context, rootNavigator: true).pop(false),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(20),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      AppLocalizations.of(context)!.cancel,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: onSurface.withValues(alpha: 0.55),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                // Vertical divider
+                                VerticalDivider(
+                                  width: 1,
+                                  thickness: 1,
+                                  color: onSurface.withValues(alpha: 0.08),
+                                ),
+                                // Delete
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context, rootNavigator: true).pop(true),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                          bottomRight: Radius.circular(20),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 16,
+                                          color: Colors.redAccent,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          AppLocalizations.of(context)!.delete,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  content: Text('${AppLocalizations.of(context)!.areYouSureYouWantToDelete} (${payload.title})?'),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context, rootNavigator: true).pop(false);
-                      },
-                      child: const FaIcon(
-                        FontAwesomeIcons.xmark,
-                        size: 30,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context, rootNavigator: true).pop(true);
-                      },
-                      child: const FaIcon(
-                        FontAwesomeIcons.check,
-                        size: 30,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
                 );
               },
             );

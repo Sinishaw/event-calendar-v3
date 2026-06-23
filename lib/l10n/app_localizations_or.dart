@@ -429,6 +429,12 @@ class AppLocalizationsOr extends AppLocalizations {
   String get areYouSureYouWantToDelete => 'Raga kana balleessuuf mirkaneessitaniittuu?';
 
   @override
+  String get cancel => 'Dhiisi';
+
+  @override
+  String get delete => 'Balleessi';
+
+  @override
   String get tapAgainToExit => 'Raawwachiisuu mirkaneessuuf irra deebi\'aa fe\'aa?';
 
   @override

@@ -139,6 +139,8 @@
     "noEventIsFound":"ምንም ክንዋኔ አልተገኘም",
     "confirmDeletion":"ለማጥፋት ማረጋገጫ",
     "areYouSureYouWantToDelete":"ይህን መረጃ ለማጥፋት እርግጠኛ ነዎት?",
+    "cancel":"አቋርጥ",
+    "delete":"አጥፋ",
     "tapAgainToExit":"ከመተግበሪያው ለመውጣት እንደገና ይጫኑ",
     "pleaseSelectFutureDateOnly":"እባክዎን የወደፊት ቀን ብቻ ያስገቡ",
     "eventTitleIsRequired":"የማስታወሻው ርዕስ ግዴታ ያስፍልጋል",
