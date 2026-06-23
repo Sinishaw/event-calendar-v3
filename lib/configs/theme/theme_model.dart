@@ -12,29 +12,26 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData? currentTheme;
 
   ThemeProvider() {
-    toggleTheme();
+    String? currentThemeName = Globals.prefs?.getString(Constants.ThemePreference);
+    currentThemeName ??= 'Dark';
+    currentTheme = ApplicationConfigs.getPreferenceTheme(currentThemeName);
   }
 
   getAppTheme() async {
-    String? currentTheme = Globals.prefs!.getString(Constants.ThemePreference);
+    String? currentThemeName = Globals.prefs!.getString(Constants.ThemePreference);
 
-    ///Set default theme to dark, if no theme preference is found
-    if (currentTheme == null) {
+    if (currentThemeName == null) {
       Globals.prefs!.setString(Constants.ThemePreference, "Dark");
-      currentTheme = "Dark";
+      currentThemeName = "Dark";
     }
-    debugPrint("------ THEME MODEL GET APP THEME: $currentTheme");
-    if (currentTheme == 'Dark') {
-      this.currentTheme = await ApplicationConfigs.getPreferenceTheme("Dark");
-    } else {
-      this.currentTheme = await ApplicationConfigs.getPreferenceTheme("Light");
-    }
+    debugPrint("------ THEME MODEL GET APP THEME: $currentThemeName");
+    currentTheme = ApplicationConfigs.getPreferenceTheme(currentThemeName);
     return notifyListeners();
   }
 
   getAppThemeV2() async {
     debugPrint("------ INIT THEME FROM LATEST OR DEFAULT REMOTE CONFIG...");
-    currentTheme = await ApplicationConfigs.getPreferenceThemeV2();
+    currentTheme = ApplicationConfigs.getPreferenceThemeV2();
     return notifyListeners();
   }
 
