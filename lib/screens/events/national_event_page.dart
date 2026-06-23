@@ -3,7 +3,6 @@
 import 'package:event_calendar_v2/utils/firebase_logger.dart';
 import 'package:event_calendar_v2/l10n/app_localizations.dart';
 import 'package:event_calendar_v2/common/geez_numbers.dart';
-import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/events/models/holiday_and_national_events.dart';
 import 'package:event_calendar_v2/screens/events/widgets/national_day_article_page.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
@@ -56,7 +55,6 @@ class _NationalEventsPageState extends State<NationalEventsPage> {
   @override
   Widget build(BuildContext context) {
     List<FixedNationalEventsDetail> holidayList = _getAllHolidaysInYear(year: _year!);
-    Color color = Theme.of(context).primaryColor;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -101,98 +99,139 @@ class _NationalEventsPageState extends State<NationalEventsPage> {
         body: AnimationLimiter(
           child: ListView.builder(
             itemCount: holidayList.length,
+            padding: const EdgeInsets.symmetric(vertical: 12),
             itemBuilder: (context, index) {
+              final holiday = holidayList[index];
+              final theme = Theme.of(context);
+              final isDark = theme.brightness == Brightness.dark;
+              final cardBg = theme.cardColor;
+
+              // Determine Category Color
+              Color categoryColor;
+              switch (holiday.holidayType) {
+                case HolidayType.christian:
+                  categoryColor = theme.primaryColor;
+                  break;
+                case HolidayType.muslim:
+                  categoryColor = Colors.green;
+                  break;
+                case HolidayType.federal:
+                  categoryColor = theme.colorScheme.secondary;
+                  break;
+                default:
+                  categoryColor = Colors.blueGrey;
+              }
+
               return AnimationConfiguration.staggeredList(
                 position: index,
                 duration: const Duration(milliseconds: 375),
                 child: SlideAnimation(
                   verticalOffset: 50.0,
-                  child: SlideAnimation(
-                    child: Card(
-                      elevation: 0,
-                      color: Colors.transparent,
-                      child: Container(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ListTile(
-                              leading: Builder(
-                                builder: (context) {
-                                  return Opacity(
-                                    opacity: 0.7,
-                                    child: Card(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(3.0),
-                                        child: holidayList[index].holidayType != HolidayType.federal
-                                            ? holidayList[index].holidayType != HolidayType.others
-                                                ? FaIcon(
-                                                    holidayList[index].holidayType == HolidayType.christian
-                                                        ? FontAwesomeIcons.cross
-                                                        : holidayList[index].holidayType == HolidayType.muslim
-                                                            ? FontAwesomeIcons.moon
-                                                            : FontAwesomeIcons.starOfDavid,
-                                                    size: 20.0,
-                                                    color: Theme.of(context).primaryColor)
-                                                : Image.asset("assets/images/adey.png", width: 24, height: 24)
-                                            : Image.asset("assets/images/flag_3d.png", width: 20, height: 20),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              title: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      holidayList[index].name!,
-                                      style: TextStyle(
-                                        fontSize: Theme.of(context).textTheme.titleLarge!.fontSize,
-                                      ),
-                                    ),
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "${MonthGlobals.etWeekNamesLong[holidayList[index].ecLocalDate!.weekDay! - 1]} | "
-                                        "${MonthGlobals.etMonthsLong[holidayList[index].ecLocalDate!.month! - 1]} | "
-                                        "${isGeezNumbers ? GeezNumbers.geezNumbers[holidayList[index].ecLocalDate!.day! - 1] : holidayList[index].ecLocalDate!.day}",
-                                        style: TextStyle(
-                                          fontSize: Globals.deviceHeight! > 700 ? 12 : 10,
-                                        ),
-                                      ),
-                                      Text(
-                                        "${MonthGlobals.gcWeekNamesShort[holidayList[index].ecLocalDate!.weekDay! - 1]} | "
-                                        "${MonthGlobals.gcMonthsShort[holidayList[index].gcLocalDate!.month! - 1]} | "
-                                        "${holidayList[index].gcLocalDate!.day}",
-                                        style: TextStyle(
-                                          fontSize: Globals.deviceHeight! > 700 ? 12 : 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              trailing: IconButton(
-                                splashRadius: 60,
-                                icon: Icon(Icons.read_more, color: Theme.of(context).colorScheme.secondary),
-                                onPressed: () {
-                                  _openDetailPage(context, holidayList[index]);
-                                },
-                              ),
-                              onLongPress: () {
-                                FocusScope.of(context).requestFocus(FocusNode());
-                                debugPrint("------ Long pressed");
-                              },
-                            ),
-                            Divider(
-                              color: color,
-                              thickness: 0.05,
-                            ),
-                          ],
+                  child: FadeInAnimation(
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12, left: 14, right: 14),
+                      decoration: BoxDecoration(
+                        color: cardBg.withOpacity(isDark ? 0.35 : 0.65),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: categoryColor.withOpacity(0.15),
+                          width: 1.2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.15 : 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Circular Category Badge
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: categoryColor.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: holiday.holidayType != HolidayType.federal
+                                  ? holiday.holidayType != HolidayType.others
+                                      ? FaIcon(
+                                          holiday.holidayType == HolidayType.christian
+                                              ? FontAwesomeIcons.cross
+                                              : FontAwesomeIcons.moon,
+                                          size: 16.0,
+                                          color: categoryColor,
+                                        )
+                                      : Image.asset("assets/images/adey.png", width: 20, height: 20)
+                                  : Image.asset("assets/images/flag_3d.png", width: 18, height: 18),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Content Column
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  holiday.name!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                // Stacked Dates
+                                Text(
+                                  "${MonthGlobals.etWeekNamesLong[holiday.ecLocalDate!.weekDay! - 1]} | "
+                                  "${MonthGlobals.etMonthsLong[holiday.ecLocalDate!.month! - 1]} | "
+                                  "${isGeezNumbers ? GeezNumbers.geezNumbers[holiday.ecLocalDate!.day! - 1] : holiday.ecLocalDate!.day}",
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.75),
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  "${MonthGlobals.gcWeekNamesShort[holiday.ecLocalDate!.weekDay! - 1]} | "
+                                  "${MonthGlobals.gcMonthsShort[holiday.gcLocalDate!.month! - 1]} | "
+                                  "${holiday.gcLocalDate!.day}",
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontStyle: FontStyle.italic,
+                                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.55),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Circular Chevron Navigation Icon
+                          GestureDetector(
+                            onTap: () => _openDetailPage(context, holiday),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondary.withOpacity(0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: theme.colorScheme.secondary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
