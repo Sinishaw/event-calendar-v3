@@ -32,6 +32,7 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
   String? weekDayGc;
   late bool isGeezNumbers;
   LocalDate? gcDate;
+  int _refreshKey = 0;
 
   @override
   void initState() {
@@ -172,10 +173,10 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
                             children: [
                               // Plus icon button
                               GestureDetector(
-                                onTap: () {
-                                  LocalDate selectedEtDate = LocalDate.date(
+                                onTap: () async {
+                                  final selectedEtDate = LocalDate.date(
                                       MonthGlobals.etShowingYear, MonthGlobals.etShowingMonth, widget.etDay);
-                                  Navigator.push(
+                                  await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) {
@@ -188,6 +189,7 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
                                       },
                                     ),
                                   );
+                                  if (mounted) setState(() => _refreshKey++);
                                 },
                                 child: Container(
                                   width: 36,
@@ -243,7 +245,10 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
 
                     // ── Event list ───────────────────────────────────────
                     Expanded(
-                      child: DailyUserEventList(selectedEtDate: etSelectedDate),
+                      child: DailyUserEventList(
+                        key: ValueKey(_refreshKey),
+                        selectedEtDate: etSelectedDate,
+                      ),
                     ),
                   ],
                 ),
