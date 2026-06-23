@@ -7,10 +7,7 @@ import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
 
 class ApplicationConfigs {
-  static Future<ThemeData> getPreferenceTheme(String themeType) async {
-    /// TODO: If the try - catch is not enough for error prevention, then
-    ///Make sure companyConfig is initialized correctly and do not raise null or empty exception
-    // final RemoteConfig remoteConfig = RemoteConfig.instance;
+  static ThemeData getPreferenceTheme(String themeType) {
     String? companyConfig = Globals.prefs!.getString(Constants.CompanyConfig);
 
     ThemeData lightTheme, darkTheme;
@@ -27,10 +24,8 @@ class ApplicationConfigs {
       primaryColorDark = Utility.colorConvert(companyThemeSetting["primaryColorDark"]);
       accentColorDark = Utility.colorConvert(companyThemeSetting["accentColorDark"]);
 
-      ///Separate the logic of application configuration from theme configuration for more read & maintainability
-      await setCompanyConfigToGlobals(companyThemeSetting);
+      setCompanyConfigToGlobals(companyThemeSetting);
     } catch (ex) {
-      ///TODO: Define better and professional look Light and Dark default themes
       CompanyConfig config = CompanyConfig(expirationDate: DateTime(2025));
       primaryColorLight = Utility.colorConvert(config.primaryColorLight!);
       accentColorLight = Utility.colorConvert(config.accentColorLight!);
@@ -76,13 +71,9 @@ class ApplicationConfigs {
     }
   }
 
-  static Future<ThemeData> getPreferenceThemeV2() async {
+  static ThemeData getPreferenceThemeV2() {
     CompanyConfig config = CompanyConfig(expirationDate: DateTime(2023));
 
-    ///TODO: If the try - catch is not enough for error prevention, then
-    /// Make sure companyConfig is initialized correctly and do not raise null or empty exception
-
-    // String companyConfig = Globals.prefs.getString(Constants.CompanyConfig);
     ThemeData lightTheme, darkTheme;
     Color? primaryColorLight;
     Color? accentColorLight;
@@ -94,15 +85,8 @@ class ApplicationConfigs {
       accentColorLight = Utility.colorConvert(config.primaryColorLight!);
       primaryColorDark = Utility.colorConvert(config.primaryColorLight!);
       accentColorDark = Utility.colorConvert(config.primaryColorLight!);
-
-      ///Separate the logic of application configuration from theme configuration for more read & maintainability
-      // await setCompanyConfigToGlobals(_companyThemeSetting);
     } catch (ex) {
-      ///TODO: Define better and professional look Light and Dark default themes
-      // _primaryColorLight = Colors.cyan;
-      // _accentColorLight = Colors.cyanAccent;
-      // _primaryColorDark = Colors.purple;
-      // _accentColorDark = Colors.purpleAccent;
+      // Ignored
     }
 
     darkTheme = ThemeData.dark().copyWith(
@@ -141,17 +125,18 @@ class ApplicationConfigs {
     }
   }
 
-  static Future<void> setCompanyConfigToGlobals(Map<String, dynamic> companyThemeSetting) async {
+  static void setCompanyConfigToGlobals(Map<String, dynamic> companyThemeSetting) {
     String? companyLogo;
     try {
       debugPrint("------ APPLICATION CONFIGURATION GLOBAL ACCESS SETUP ++++++++++");
       debugPrint(companyThemeSetting.toString());
       companyLogo = companyThemeSetting[Constants.CompanyLogo];
     } catch (ex) {
-      ///TODO: Define better and professional look Light and Dark default themes
       companyLogo = null;
     }
 
-    Globals.prefs!.setString(Constants.CompanyLogo, companyLogo!);
+    if (companyLogo != null) {
+      Globals.prefs!.setString(Constants.CompanyLogo, companyLogo);
+    }
   }
 }

@@ -8,7 +8,6 @@ import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:event_calendar_v2/screens/topic/model/topic_model.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:event_calendar_v2/utils/firebase_logger.dart';
-import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
 
 import 'animation/animated_logo.dart';
@@ -126,39 +125,17 @@ class _HomePageState extends State<HomePage> {
                           errorWidget: (context, url, error) => const Icon(Icons.error),
                         )
                       : Container(
+                          width: cardWidth,
+                          height: cardHeight,
                           decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: Alignment.topRight,
-                              tileMode: TileMode.decal,
-                              radius: 0.6,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
                               colors: [
-                                Colors.white,
-                                Utility.colorConvert("#f7d031")!,
-                                Utility.colorConvert("#f7d031")!,
-                                Utility.colorConvert("#f7d031")!,
-                                Utility.colorConvert("#f7d031")!.withOpacity(0.1),
-                                Utility.colorConvert("#f7d031")!.withOpacity(0.1)
+                                Theme.of(context).primaryColor.withValues(alpha: 0.25),
+                                Theme.of(context).scaffoldBackgroundColor,
                               ],
                             ),
-                          ),
-                          child: Center(
-                            child: Padding(
-                                padding: const EdgeInsets.only(right: 100, top: 100),
-                                child: TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                                    curve: Curves.easeIn,
-                                    duration: const Duration(seconds: 3),
-                                    builder: (BuildContext context, double opacity, Widget? child) {
-                                      return Opacity(
-                                        opacity: opacity,
-                                        child: Image.asset(
-                                          "assets/images/default_image.png",
-                                          fit: BoxFit.contain,
-                                          width: 200,
-                                          height: 200,
-                                        ),
-                                      );
-                                    })),
                           ),
                         ),
                   const AnimateLogo(),
