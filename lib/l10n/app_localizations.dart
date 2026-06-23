@@ -951,6 +951,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get delete;
 
+  /// No description provided for @opening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening...'**
+  String get opening;
+
   /// No description provided for @tapAgainToExit.
   ///
   /// In en, this message translates to:

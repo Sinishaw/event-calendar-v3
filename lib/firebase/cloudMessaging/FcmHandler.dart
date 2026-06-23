@@ -54,7 +54,12 @@ class FcmHandler {
   }
 
   _getToken() async {
-    messaging.getToken().then((value) => debugPrint("FCM TOKEN: $value"));
+    try {
+      final token = await messaging.getToken();
+      debugPrint("FCM TOKEN: $token");
+    } catch (e) {
+      debugPrint("------ FCM Token Error: $e");
+    }
   }
 
   _showNotificationDialog(CompanyContentModel content) {

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:event_calendar_v2/l10n/app_localizations.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:event_calendar_v2/firebase/dynamicLink/dynamicLink.dart';
 import 'package:event_calendar_v2/language/language_change_provider.dart';
 import 'package:event_calendar_v2/menu/bottom_navigation.dart';
 import 'package:event_calendar_v2/menu/side_menu.dart';
@@ -34,6 +33,7 @@ import 'screens/topic/model/topic_model.dart';
 import 'shared/models/local_date_model.dart';
 import 'utils/firebase_logger.dart';
 import 'utils/utilities.dart';
+import 'screens/splash/splash_screen.dart';
 
 const String environment = String.fromEnvironment('ENV', defaultValue: 'dev');
 
@@ -142,6 +142,8 @@ Future<void> registerUserIdInFirestore() async {
         CloudFireStore().registerCompanyCount(increaseBy: 1);
       });
       return;
+    }).catchError((dynamic error) {
+      debugPrint("------ Error registering userId/getToken: $error");
     });
   }
 }
@@ -218,40 +220,10 @@ Future<void> main() async {
     options: firebaseOptions,
   );
   NotificationService().initNotifications();
+  Globals.prefs = await SharedPreferences.getInstance();
+  Globals.initCompanySettingFromLocalIfAny();
 
-  runApp(
-    FutureBuilder(
-      future: initializeApp().timeout(const Duration(seconds: 5)),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const App();
-        }
-        if (snapshot.hasData && snapshot.data == "true") {
-          return const App();
-        } else {
-          return FutureBuilder(
-            future: Future.delayed(const Duration(seconds: 3)),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting || snapshot.hasError) {
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      "assets/images/splash_image.png",
-                      height: 200,
-                      width: 200,
-                    ),
-                  ],
-                );
-              } else {
-                return const App();
-              }
-            },
-          );
-        }
-      },
-    ),
-  );
+  runApp(const App());
 }
 
 class App extends StatefulWidget {
@@ -385,14 +357,7 @@ class _AppState extends State<App> {
           theme: themeProvider.currentTheme,
           locale: languageProvider.getCurrentLocale(),
           navigatorObservers: <NavigatorObserver>[App.observer],
-          home: FutureBuilder(
-            future: FirebaseDynamicLink.configureAppFromDynamicLinkV2(context)
-                .timeout(const Duration(seconds: 5))
-                .then((value) => const ContainerPage()),
-            builder: (context, snapshot) {
-              return const ContainerPage();
-            },
-          ),
+          home: const SplashScreen(),
         );
       },
     );

@@ -144,6 +144,7 @@
   "areYouSureYouWantToDelete":"Are you sure you want to delete?",
   "cancel":"Cancel",
   "delete":"Delete",
+  "opening":"Opening...",
   "tapAgainToExit":"Tap again to exit",
   "pleaseSelectFutureDateOnly":"Please select Future date only",
   "eventTitleIsRequired":"Event Title is Required",

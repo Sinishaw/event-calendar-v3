@@ -435,6 +435,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get delete => 'Delete';
 
   @override
+  String get opening => 'Opening...';
+
+  @override
   String get tapAgainToExit => 'Tap again to exit';
 
   @override

@@ -114,12 +114,14 @@ class _HomePageState extends State<HomePage> {
               child: Stack(
                 alignment: _logoLocation(),
                 children: [
-                  Globals.monthImagesList[0] != null && Globals.monthImagesList[0]!.isNotEmpty
+                  Globals.monthImagesList[0] != null &&
+                          Globals.monthImagesList[0]!.isNotEmpty &&
+                          MonthGlobals.etShowingMonth != null
                       ? CachedNetworkImage(
                           fit: BoxFit.cover,
                           width: cardWidth,
                           height: cardHeight,
-                          imageUrl: Globals.monthImagesList[MonthGlobals.etShowingMonth! - 1]!,
+                          imageUrl: Globals.monthImagesList[MonthGlobals.etShowingMonth! - 1] ?? '',
                           placeholder: (context, url) =>
                               ConstrainedBox(constraints: const BoxConstraints(minHeight: 200), child: Container()),
                           errorWidget: (context, url, error) => const Icon(Icons.error),
