@@ -992,6 +992,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                       FirebaseLogger.logCompanyScreenView(LogScreen.NationalDayArticles.index);
                       return NationalDayArticlePage(
                         nationalDayRef: payload.body,
+                        holidayName: payload.title,
                       );
                     },
                   ),
