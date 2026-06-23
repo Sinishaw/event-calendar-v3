@@ -1,4 +1,5 @@
 // ignore_for_file: avoid_unnecessary_containers, use_build_context_synchronously
+import 'dart:ui';
 import 'package:event_calendar_v2/l10n/app_localizations.dart';import 'package:cached_network_image/cached_network_image.dart';
 import 'package:event_calendar_v2/common/geez_numbers.dart';
 import 'package:event_calendar_v2/common/globals.dart';
@@ -234,62 +235,79 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
                     DraggableScrollableSheet(
                       initialChildSize: 0.1,
                       minChildSize: 0.1,
-                      maxChildSize: 1,
+                      maxChildSize: 0.95,
                       builder: (BuildContext context, scrollController) {
-                        return Container(
+                        final theme = Theme.of(context);
+                        final isDark = theme.brightness == Brightness.dark;
+                        final double opacity = Globals.setting.menuBackgroundOpacity ?? 0.95;
+                        final Color dialogBg = theme.dialogBackgroundColor;
+
+                        Widget sheetContent = Container(
                           decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Theme.of(context).primaryColor.withOpacity(0.5),
-                                  width: 0.5,
-                                ),
-                              )),
+                            color: dialogBg.withOpacity(opacity),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(24),
+                              topRight: Radius.circular(24),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(isDark ? 0.25 : 0.08),
+                                blurRadius: 16,
+                                offset: const Offset(0, -4),
+                              ),
+                            ],
+                            border: Border(
+                              top: BorderSide(
+                                color: theme.primaryColor.withOpacity(0.12),
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
                           child: ListView.builder(
-                            itemCount: eventsList.length,
+                            itemCount: eventsList.length + 1,
                             controller: scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             itemBuilder: (context, index) {
-                              return index > 0
-                                  ? Container(
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
-                                      ),
-                                      child: eventsList[index].title != null
-                                          ? Padding(
-                                              padding: const EdgeInsets.only(bottom: 4.0),
-                                              child: _eventImportancePicker(context, eventsList[index]))
-                                          : const ListTile(
-                                              title: Text(""),
-                                            ))
-                                  : Column(
-                                      mainAxisAlignment: MainAxisAlignment.start,
-                                      children: [
-                                        FaIcon(
-                                          // Icons.drag_handle,
-                                          FontAwesomeIcons.angleUp,
-                                          size: screenHeight > 700 ? 30 : 25,
-                                        ),
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
-                                            borderRadius: const BorderRadius.only(
-                                              topRight: Radius.circular(20),
-                                              topLeft: Radius.circular(20),
-                                            ),
-                                          ),
-                                          child: eventsList[index].title != null
-                                              ? Padding(
-                                                  padding: const EdgeInsets.only(bottom: 4.0),
-                                                  child: _eventImportancePicker(context, eventsList[index]))
-                                              : const ListTile(
-                                                  title: Text(""),
-                                                ),
-                                        ),
-                                      ],
-                                    );
+                              if (index == 0) {
+                                // Persistent Drag Handle Pill as index 0 of the scrollable list
+                                return Center(
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 12),
+                                    width: 44,
+                                    height: 5,
+                                    decoration: BoxDecoration(
+                                      color: theme.primaryColor.withOpacity(0.25),
+                                      borderRadius: BorderRadius.circular(2.5),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final payload = eventsList[index - 1];
+                              if (payload.title == null) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: _eventImportancePicker(context, payload),
+                              );
                             },
                           ),
                         );
+
+                        if (opacity < 1.0) {
+                          return ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(24),
+                              topRight: Radius.circular(24),
+                            ),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                              child: sheetContent,
+                            ),
+                          );
+                        }
+                        return sheetContent;
                       },
                     ),
                   ],
@@ -670,12 +688,30 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
 
   _eventImportancePicker(BuildContext context, NotificationPayload payload) {
     if (isEmptyList) {
-      return ListTile(
-        title: Row(
+      final theme = Theme.of(context);
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.cardColor.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.primaryColor.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.perm_device_information, color: Theme.of(context).primaryColor),
-            Text("${payload.title}", style: TextStyle(color: Theme.of(context).primaryColor)),
+            Icon(Icons.info_outline_rounded, color: theme.primaryColor.withOpacity(0.7), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              "${payload.title}",
+              style: TextStyle(
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       );
@@ -692,102 +728,138 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
   }
 
   _companyAndTopicContentBuilder(BuildContext context, NotificationPayload payload) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
     return Container(
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(isDark ? 0.35 : 0.65),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.12),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       child: Row(
-        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            flex: 1,
+          // Image / Icon
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
             child: Container(
+              width: 30,
+              height: 30,
+              color: primaryColor.withOpacity(0.08),
               child: payload.icon != null && payload.icon!.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: payload.icon!,
-                      height: 50,
-                      width: 50,
-                      // fit: BoxFit.contain,
-                      placeholder: (context, url) => ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 50),
-                        child: Container(
-                          child: const Center(child: Text("...")),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => const Icon(Icons.broken_image),
-                    )
-                  : Container(),
-            ),
-          ),
-          Expanded(
-            flex: 5,
-            child: Container(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      payload.title!,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: Theme.of(context).textTheme.titleLarge!.fontSize),
-                    ),
-                  ),
-                  Text(
-                    payload.body!,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: Theme.of(context).textTheme.bodyMedium!.fontSize, fontStyle: FontStyle.italic),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "${_getEventDateTimeDetail(payload)}",
-                          style: TextStyle(fontSize: Globals.deviceHeight! > 700 ? 10 : 8),
-                          softWrap: true,
-                        ),
-                        Card(
-                          elevation: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                            child: GestureDetector(
-                              onTap: () {
-                                if (payload.contentSource == ContentSource.CompanyEvent ||
-                                    payload.contentSource == ContentSource.TopicEvent) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        // FirebaseLogger.logGlobalScreenView(LogScreen.NationalDayArticles.index);
-                                        // FirebaseLogger.logCompanyScreenView(LogScreen.NationalDayArticles.index);
-                                        return const CompanyContentPage(
-                                            // nationalDayRef: payload.,
-                                            // eventDetail: eventsDetail,
-                                            );
-                                      },
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Text(
-                                // payload.topic,
-                                "more...",
-                                style: TextStyle(
-                                    fontSize: Globals.deviceHeight! > 700 ? 12 : 10,
-                                    color: Theme.of(context).colorScheme.secondary),
-                              ),
-                            ),
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Center(
+                        child: SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.2,
+                            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                           ),
                         ),
-                      ],
+                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.image_not_supported_rounded, color: primaryColor, size: 14),
+                    )
+                  : Icon(Icons.business_rounded, color: primaryColor, size: 14),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  payload.title!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+                if (payload.body != null && payload.body!.isNotEmpty) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    payload.body!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.65),
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
-                  Divider(
-                    color: Theme.of(context).primaryColor,
-                  )
                 ],
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 10,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.45),
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        _getEventDateTimeDetail(payload),
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w500,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Trailing Chevron Icon
+          GestureDetector(
+            onTap: () {
+              if (payload.contentSource == ContentSource.CompanyEvent ||
+                  payload.contentSource == ContentSource.TopicEvent) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return const CompanyContentPage();
+                    },
+                  ),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondary.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: theme.colorScheme.secondary,
               ),
             ),
           ),
@@ -797,115 +869,145 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
   }
 
   _nationalAndPersonalContentBuilder(BuildContext context, NotificationPayload payload) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardBg = theme.cardColor;
+
+    final Color categoryColor = payload.eventTagOption == EventTagOption.national
+        ? theme.primaryColor
+        : Globals.categoryColorList[payload.eventTagOption!.index];
+
     return Container(
-      color: payload.eventTagOption == EventTagOption.national
-          ? Theme.of(context).primaryColor.withOpacity(0.1)
-          : Globals.categoryColorList[payload.eventTagOption!.index].withOpacity(0.1),
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(isDark ? 0.35 : 0.65),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: categoryColor.withOpacity(0.15),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       child: Row(
-        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            flex: 1,
-            child: Container(
-              child: payload.eventTagOption == EventTagOption.national
-                  ? Icon(
-                      Icons.celebration,
-                      size: 20,
-                      color: Theme.of(context).primaryColor,
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      // crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Icon(
-                          Icons.label_important,
-                          size: 40.0,
-                          color: Globals.categoryColorList[payload.eventTagOption!.index],
-                        ),
-                        const Icon(Icons.notifications),
-                        // Icon(
-                        //   payload.scheduleOption != NotificationScheduleOption.noNotification
-                        //       ? Icons.notifications
-                        //       : Icons.notifications_off,
-                        //   size: 12.0,
-                        //   // color: Globals.categoryColorList[payload.eventTagOption.index],
-                        // ),
-                      ],
-                    ),
+          // Icon Badge
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: categoryColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              payload.eventTagOption == EventTagOption.national
+                  ? Icons.celebration_rounded
+                  : Icons.label_important_rounded,
+              color: categoryColor,
+              size: 14,
             ),
           ),
+          const SizedBox(width: 8),
+          // Content
           Expanded(
-            flex: 5,
-            child: Container(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  payload.title!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+                if (payload.body != null && payload.body!.isNotEmpty) ...[
+                  const SizedBox(height: 1),
                   Text(
-                    payload.title!,
+                    payload.body!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: Theme.of(context).textTheme.titleLarge!.fontSize,
+                      fontSize: 10,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.65),
+                      fontStyle: FontStyle.italic,
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            "${_getEventDateTimeDetail(payload)}",
-                            style: TextStyle(fontSize: Globals.deviceHeight! > 700 ? 10 : 8),
-                            softWrap: true,
-                          ),
-                        ),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                            child: InkWell(
-                              onTap: () {
-                                if (payload.contentSource == ContentSource.UserTask) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return UserEventPage(
-                                          selectedEtDate: LocalDate.date(payload.eY, payload.eM! + 1, payload.eD),
-                                          fetchLatestEventsCallback: fetchLatestEventsCallback,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        FirebaseLogger.logGlobalScreenView(LogScreen.NationalDayArticles.index);
-                                        FirebaseLogger.logCompanyScreenView(LogScreen.NationalDayArticles.index);
-                                        return NationalDayArticlePage(
-                                          nationalDayRef: payload.body,
-                                          // eventDetail: eventsDetail,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const Icon(
-                                Icons.read_more,
-                                size: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(
-                    color: Theme.of(context).primaryColor,
                   ),
                 ],
+                const SizedBox(height: 2),
+                // DateTime Row
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 10,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.45),
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        _getEventDateTimeDetail(payload),
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w500,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Trailing Chevron Icon
+          GestureDetector(
+            onTap: () {
+              if (payload.contentSource == ContentSource.UserTask) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return UserEventPage(
+                        selectedEtDate: LocalDate.date(payload.eY, payload.eM! + 1, payload.eD),
+                        fetchLatestEventsCallback: fetchLatestEventsCallback,
+                      );
+                    },
+                  ),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      FirebaseLogger.logGlobalScreenView(LogScreen.NationalDayArticles.index);
+                      FirebaseLogger.logCompanyScreenView(LogScreen.NationalDayArticles.index);
+                      return NationalDayArticlePage(
+                        nationalDayRef: payload.body,
+                      );
+                    },
+                  ),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondary.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: theme.colorScheme.secondary,
               ),
             ),
           ),
