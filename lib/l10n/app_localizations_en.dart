@@ -429,6 +429,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get areYouSureYouWantToDelete => 'Are you sure you want to delete?';
 
   @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
   String get tapAgainToExit => 'Tap again to exit';
 
   @override

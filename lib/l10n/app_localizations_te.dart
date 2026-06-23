@@ -429,6 +429,12 @@ class AppLocalizationsTe extends AppLocalizations {
   String get areYouSureYouWantToDelete => 'ክድምስሱ ይደልዩ ድዮም?';
 
   @override
+  String get cancel => 'አቋርፅ';
+
+  @override
+  String get delete => 'ደምስስ';
+
+  @override
   String get tapAgainToExit => 'ንምውፃእ ደጊሞም ይንከኡ';
 
   @override

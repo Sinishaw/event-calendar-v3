@@ -142,6 +142,8 @@
   "noEventIsFound":"No Event is Found",
   "confirmDeletion":"Confirm Deletion",
   "areYouSureYouWantToDelete":"Are you sure you want to delete?",
+  "cancel":"Cancel",
+  "delete":"Delete",
   "tapAgainToExit":"Tap again to exit",
   "pleaseSelectFutureDateOnly":"Please select Future date only",
   "eventTitleIsRequired":"Event Title is Required",
