@@ -183,7 +183,7 @@ class _NationalDayArticlePageState extends State<NationalDayArticlePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.holidayName!),
+        title: Text(widget.holidayName ?? ''),
       ),
       body: company != null
           ? FutureBuilder(
