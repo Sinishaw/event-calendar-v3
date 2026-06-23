@@ -435,6 +435,9 @@ class AppLocalizationsTe extends AppLocalizations {
   String get delete => 'ደምስስ';
 
   @override
+  String get opening => 'ይክፈት ኣሎ...';
+
+  @override
   String get tapAgainToExit => 'ንምውፃእ ደጊሞም ይንከኡ';
 
   @override

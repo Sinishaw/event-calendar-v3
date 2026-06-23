@@ -435,6 +435,9 @@ class AppLocalizationsOr extends AppLocalizations {
   String get delete => 'Balleessi';
 
   @override
+  String get opening => 'Banaamaa jira...';
+
+  @override
   String get tapAgainToExit => 'Raawwachiisuu mirkaneessuuf irra deebi\'aa fe\'aa?';
 
   @override

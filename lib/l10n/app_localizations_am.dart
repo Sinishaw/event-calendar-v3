@@ -435,6 +435,9 @@ class AppLocalizationsAm extends AppLocalizations {
   String get delete => 'አጥፋ';
 
   @override
+  String get opening => 'በመክፈት ላይ...';
+
+  @override
   String get tapAgainToExit => 'ከመተግበሪያው ለመውጣት እንደገና ይጫኑ';
 
   @override
