@@ -519,12 +519,6 @@ abstract class AppLocalizations {
   /// **'Labour Day'**
   String get labaderoch;
 
-  /// No description provided for @ginbot20.
-  ///
-  /// In en, this message translates to:
-  /// **'Derg Downfall Day'**
-  String get ginbot20;
-
   /// No description provided for @eidAlFitur.
   ///
   /// In en, this message translates to:

@@ -207,14 +207,7 @@ class HolidayAndNationalEvents {
 
     FixedNationalEventsDetail lb = _getHolidayDetail(year, lbM, lbD, EthiopianFixedHoliday.labaderoch, federalType);
 
-    ///Ginbot 20
-    int gnM = 9;
-    int gnD = 20;
-
-    FixedNationalEventsDetail gn = _getHolidayDetail(year, gnM, gnD, EthiopianFixedHoliday.ginbot20, federalType);
-
     list.addAll([ny, ms, tm, ad, ar, lb]);
-    if (year > 1982) list.add(gn);
     return list;
   }
 

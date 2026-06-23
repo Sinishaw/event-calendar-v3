@@ -219,9 +219,6 @@ class AppLocalizationsAm extends AppLocalizations {
   String get labaderoch => 'የላባደሮች ቀን';
 
   @override
-  String get ginbot20 => 'ደርግ የወደቀበት ቀን';
-
-  @override
   String get eidAlFitur => 'የኢድ አልፈጥር በዓል';
 
   @override
