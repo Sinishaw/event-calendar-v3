@@ -459,5 +459,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thirteenMonthsOfSunshine => 'Ethi♡pia, 13 Months of Sunshine';
 
   @override
+  String get editEventOrTask => 'Edit Event or Task';
+
+  @override
   String get clickHereToOpenSource => 'Click here to open source';
 }
