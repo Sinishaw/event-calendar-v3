@@ -59,14 +59,28 @@ class _YearPageState extends State<YearPage> {
           },
         ),
         title: InkWell(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => YearPickerDialog(year: _year, callback: updateYearCallback),
-              );
-              debugPrint("You have tapped year : $_year");
-            },
-            child: Center(child: Text("${isGeezNumbers ? GeezNumbers.geezYears[_year! - 1900] : _year}"))),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => YearPickerDialog(year: _year, callback: updateYearCallback),
+            );
+            debugPrint("You have tapped year : $_year");
+          },
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "${isGeezNumbers ? GeezNumbers.geezYears[_year! - 1900] : _year} ",
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.arrow_forward_ios),

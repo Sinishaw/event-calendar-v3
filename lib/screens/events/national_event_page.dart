@@ -71,16 +71,28 @@ class _NationalEventsPageState extends State<NationalEventsPage> {
             },
           ),
           title: Center(
-              child: InkWell(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => YearPickerDialog(year: _year, callback: updateYearCallback),
-                    );
-                    debugPrint("------ You have tapped year : $_year");
-                  },
-                  child: Text(
-                      "${isGeezNumbers ? GeezNumbers.geezYears[_year! - 1900] : _year} - ${AppLocalizations.of(context)!.nationalDays} "))),
+            child: InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => YearPickerDialog(year: _year, callback: updateYearCallback),
+                );
+                debugPrint("------ You have tapped year : $_year");
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "${isGeezNumbers ? GeezNumbers.geezYears[_year! - 1900] : _year} - ${AppLocalizations.of(context)!.nationalDays} ",
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
           automaticallyImplyLeading: false,
           actions: <Widget>[
             IconButton(
