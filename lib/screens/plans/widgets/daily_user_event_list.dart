@@ -333,13 +333,17 @@ class DailyUserEventList extends StatelessWidget {
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 20),
             decoration: BoxDecoration(
-              color: Colors.redAccent.withOpacity(0.9),
+              color: Colors.redAccent.withValues(alpha: 0.05),
+              border: Border.all(
+                color: Colors.redAccent.withValues(alpha: 0.8),
+                width: 0.8,
+              ),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.delete_outline_rounded,
-              color: Colors.white,
-              size: 28,
+              color: Colors.redAccent,
+              size: 26,
             ),
           ),
           direction: DismissDirection.endToStart,
