@@ -459,5 +459,8 @@ class AppLocalizationsAm extends AppLocalizations {
   String get thirteenMonthsOfSunshine => 'ኢትዮጵያ ♡ የ፲፫ ወር ጸጋ';
 
   @override
+  String get editEventOrTask => 'ተግባር ወይም ጉዳይ ያርትዑ';
+
+  @override
   String get clickHereToOpenSource => 'Click here to open source';
 }

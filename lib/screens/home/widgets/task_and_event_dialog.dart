@@ -248,6 +248,12 @@ class _ShowDayTaskAndEventsDialogState extends State<ShowDayTaskAndEventsDialog>
                       child: DailyUserEventList(
                         key: ValueKey(_refreshKey),
                         selectedEtDate: etSelectedDate,
+                        onEventsChanged: () {
+                          if (mounted) setState(() => _refreshKey++);
+                          if (widget.fetchLatestEventsCallback != null) {
+                            widget.fetchLatestEventsCallback!();
+                          }
+                        },
                       ),
                     ),
                   ],

@@ -21,11 +21,12 @@ import 'widgets/notification_schedule_picker.dart';
 
 class UserEventPage extends StatefulWidget {
   static const String routeName = '/user_events';
-  const UserEventPage({super.key, this.title, this.selectedEtDate, this.fetchLatestEventsCallback});
+  const UserEventPage({super.key, this.title, this.selectedEtDate, this.fetchLatestEventsCallback, this.eventToEdit});
 
   final String? title;
   final LocalDate? selectedEtDate;
   final Function? fetchLatestEventsCallback;
+  final NotificationPayload? eventToEdit;
 
   bool get didNotificationLaunchApp => Globals.notificationAppLaunchDetails?.didNotificationLaunchApp ?? false;
 
@@ -701,6 +702,13 @@ class _UserEventPageState extends State<UserEventPage> {
     ///Validate entry and exit operation if entry is invalidated
     if (!_isEntryValid(validationDate)) return;
 
+    if (widget.eventToEdit != null) {
+      int oldNotificationId = widget.eventToEdit!.id!;
+      int oldNotificationEarlyAlertId = oldNotificationId + 1;
+      await NotificationService().cancelNotification(oldNotificationId);
+      await NotificationService().cancelNotification(oldNotificationEarlyAlertId);
+    }
+
     bool alertOnly = false;
 
     for (int i = 0; i < 2; i++) {
@@ -778,7 +786,7 @@ class _UserEventPageState extends State<UserEventPage> {
           return;
       }
     }
-    setState(() {
+    if (widget.eventToEdit != null) {
       Globals.showSaveResultMessage(
           context: context,
           type: SnackMessageType.success,
@@ -786,8 +794,20 @@ class _UserEventPageState extends State<UserEventPage> {
           gcDate: selectedGcDate!,
           gcTime: selectedGcTime24!,
           etDate: _selectedEtDate);
-      _resetEntry(keepDate: true);
-    });
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (mounted) Navigator.pop(context);
+    } else {
+      setState(() {
+        Globals.showSaveResultMessage(
+            context: context,
+            type: SnackMessageType.success,
+            message: "",
+            gcDate: selectedGcDate!,
+            gcTime: selectedGcTime24!,
+            etDate: _selectedEtDate);
+        _resetEntry(keepDate: true);
+      });
+    }
   }
 
   NotificationPayload _getNotificationPayload({int? id, required DateTime gcSelectedDateTime, bool alertOnly = false}) {
@@ -830,7 +850,9 @@ class _UserEventPageState extends State<UserEventPage> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.addNewEventOrTask),
+        title: Text(widget.eventToEdit != null
+            ? AppLocalizations.of(context)!.editEventOrTask
+            : AppLocalizations.of(context)!.addNewEventOrTask),
         centerTitle: true,
       ),
       body: LayoutBuilder(
@@ -841,6 +863,63 @@ class _UserEventPageState extends State<UserEventPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
+                  if (widget.eventToEdit != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.orange.withValues(alpha: 0.15),
+                            Colors.orange.withValues(alpha: 0.05),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              color: Colors.orange,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "${AppLocalizations.of(context)!.editEventOrTask}: ${widget.eventToEdit!.title}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.orange,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   // Title text input
                   TextField(
                     controller: _titleTextController,
@@ -950,12 +1029,14 @@ class _UserEventPageState extends State<UserEventPage> {
                   const SizedBox(height: 8),
 
                   // Daily events list
-                  SizedBox(
-                    height: availableHeight / 2.2,
-                    child: DailyUserEventList(
-                      selectedEtDate: _selectedEtDate,
+                  if (widget.eventToEdit == null) ...[
+                    SizedBox(
+                      height: availableHeight / 2.2,
+                      child: DailyUserEventList(
+                        selectedEtDate: _selectedEtDate,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -971,7 +1052,11 @@ class _UserEventPageState extends State<UserEventPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(Icons.save_rounded, color: Colors.white, size: 24),
+          child: Icon(
+            widget.eventToEdit != null ? Icons.check_rounded : Icons.save_rounded,
+            color: Colors.white,
+            size: 24,
+          ),
         ),
       ),
       floatingActionButtonLocation: const _CustomFABLocation(),
@@ -989,12 +1074,51 @@ class _UserEventPageState extends State<UserEventPage> {
     }
   }
 
+  _initEditMode() {
+    final payload = widget.eventToEdit!;
+    eventTitle = payload.title;
+    _titleTextController.text = eventTitle ?? "";
+    eventNote = payload.body;
+    _bodyTextController.text = eventNote ?? "";
+
+    _selectedEtDate = LocalDate.detailed(payload.eY, payload.eM, payload.eD, payload.weekday);
+    selectedGcDate = LocalDate.detailed(payload.gY, payload.gM, payload.gD, payload.weekday);
+
+    final schedDateTime = payload.scheduledDateTime ?? DateTime.now();
+
+    selectedGcTime24 = LocalTime.hourMinute24(hour: schedDateTime.hour, minute: schedDateTime.minute);
+
+    int gcHour12 = schedDateTime.hour > 12
+        ? schedDateTime.hour - 12
+        : (schedDateTime.hour == 0 ? 12 : schedDateTime.hour);
+    TimePeriod gcPeriod = schedDateTime.hour < 12 ? TimePeriod.AM : TimePeriod.PM;
+    selectedGcTime = LocalTime.hourMinute12(gcHour12, schedDateTime.minute, gcPeriod);
+
+    int etHour = 0;
+    if (schedDateTime.hour < 7) {
+      etHour = schedDateTime.hour + 6;
+    } else if (schedDateTime.hour < 19) {
+      etHour = schedDateTime.hour - 6;
+    } else {
+      etHour = schedDateTime.hour - 18;
+    }
+    selectedEtTime = LocalTime.hourMinute12(etHour, schedDateTime.minute, gcPeriod);
+
+    selectedEventTag = payload.eventTagOption?.index ?? EventTagOption.regular.index;
+    selectedRepeatOption = payload.repeatOption?.index ?? NotificationRepeatOption.noRecurrence.index;
+    selectedNotificationSchedule = payload.scheduleOption?.index ?? NotificationScheduleOption.onTime.index;
+  }
+
   @override
   void initState() {
     super.initState();
     NotificationService().requestPermissions();
     isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
-    _resetEntry(keepDate: false);
+    if (widget.eventToEdit != null) {
+      _initEditMode();
+    } else {
+      _resetEntry(keepDate: false);
+    }
   }
 
   @override

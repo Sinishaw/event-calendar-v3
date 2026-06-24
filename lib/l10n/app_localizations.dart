@@ -999,6 +999,12 @@ abstract class AppLocalizations {
   /// **'Ethi♡pia, 13 Months of Sunshine'**
   String get thirteenMonthsOfSunshine;
 
+  /// No description provided for @editEventOrTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Event or Task'**
+  String get editEventOrTask;
+
   /// No description provided for @clickHereToOpenSource.
   ///
   /// In en, this message translates to:

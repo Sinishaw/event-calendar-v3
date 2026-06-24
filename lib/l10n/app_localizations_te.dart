@@ -459,5 +459,8 @@ class AppLocalizationsTe extends AppLocalizations {
   String get thirteenMonthsOfSunshine => 'ኢትዮጵያ ♡ ናይ 13 አዋርሕ ፀጋ';
 
   @override
+  String get editEventOrTask => 'ጉዳይ/ክንውን ኣስተካኽል';
+
+  @override
   String get clickHereToOpenSource => 'Click here to open source';
 }

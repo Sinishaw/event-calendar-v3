@@ -459,5 +459,8 @@ class AppLocalizationsOr extends AppLocalizations {
   String get thirteenMonthsOfSunshine => 'Ji\'oota aduun itti baatu Itoophiyaa 13\'n';
 
   @override
+  String get editEventOrTask => 'Gocha ykn dhimma gulaali';
+
+  @override
   String get clickHereToOpenSource => 'Click here to open source';
 }

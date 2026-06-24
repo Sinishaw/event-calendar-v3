@@ -15,14 +15,16 @@ import 'package:event_calendar_v2/services/notifications/notification_service.da
 import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
+import 'package:event_calendar_v2/screens/plans/user_event_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 
 class DailyUserEventList extends StatelessWidget {
-  DailyUserEventList({super.key, this.selectedEtDate});
+  DailyUserEventList({super.key, this.selectedEtDate, this.onEventsChanged});
 
   final LocalDate? selectedEtDate;
+  final VoidCallback? onEventsChanged;
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final List<NotificationPayload> allNotificationPayloadList = [];
@@ -143,7 +145,24 @@ class DailyUserEventList extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Dismissible(
           key: UniqueKey(),
-          confirmDismiss: (direction) {
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.startToEnd) {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserEventPage(
+                    title: "User Events",
+                    selectedEtDate: LocalDate.date(payload.eY, payload.eM, payload.eD),
+                    eventToEdit: payload,
+                    fetchLatestEventsCallback: onEventsChanged,
+                  ),
+                ),
+              );
+              if (onEventsChanged != null) {
+                onEventsChanged!();
+              }
+              return false;
+            }
             return showDialog<bool>(
               context: context,
               barrierColor: Colors.black54,
@@ -330,12 +349,43 @@ class DailyUserEventList extends StatelessWidget {
           },
           behavior: HitTestBehavior.opaque,
           background: Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.teal.withValues(alpha: 0.15),
+                  Colors.teal.withValues(alpha: 0.02),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              border: Border.all(
+                color: Colors.teal.withValues(alpha: 0.7),
+                width: 0.8,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.mode_edit_outline_rounded,
+              color: Colors.teal,
+              size: 26,
+            ),
+          ),
+          secondaryBackground: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 20),
             decoration: BoxDecoration(
-              color: Colors.redAccent.withValues(alpha: 0.05),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.redAccent.withValues(alpha: 0.02),
+                  Colors.redAccent.withValues(alpha: 0.15),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
               border: Border.all(
-                color: Colors.redAccent.withValues(alpha: 0.8),
+                color: Colors.redAccent.withValues(alpha: 0.7),
                 width: 0.8,
               ),
               borderRadius: BorderRadius.circular(16),
@@ -346,7 +396,7 @@ class DailyUserEventList extends StatelessWidget {
               size: 26,
             ),
           ),
-          direction: DismissDirection.endToStart,
+          direction: DismissDirection.horizontal,
           onDismissed: (DismissDirection direction) async {
             if (direction == DismissDirection.endToStart) {
               debugPrint("------ Cancellation ${payload.title}");
@@ -354,6 +404,9 @@ class DailyUserEventList extends StatelessWidget {
               int notificationEarlyAlertId = payload.id! + 1;
               await NotificationService().cancelNotification(notificationId);
               await NotificationService().cancelNotification(notificationEarlyAlertId);
+              if (onEventsChanged != null) {
+                onEventsChanged!();
+              }
             }
           },
           child: eventRow,
