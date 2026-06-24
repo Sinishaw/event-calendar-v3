@@ -4,7 +4,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:event_calendar_v2/common/constants.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/company/models/company_content_model.dart';
-import 'package:event_calendar_v2/screens/events/widgets/content_detail_page.dart';
+import 'package:event_calendar_v2/screens/company/widgets/content_detail_page.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:event_calendar_v2/screens/topic/model/topic_model.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
@@ -634,7 +634,11 @@ class _HomePageState extends State<HomePage> {
                   pageBuilder: (context, animation, secondaryAnimation) {
                     FirebaseLogger.logGlobalScreenView(LogScreen.CompanyContentDetail.index);
                     FirebaseLogger.logCompanyScreenView(LogScreen.CompanyContentDetail.index);
-                    return ContentDetailPage(companyContentModel: filteredList[index], index: index);
+                    return ContentDetailPage(
+                      companyContentModel: filteredList[index],
+                      index: index,
+                      inAppDialogSource: false,
+                    );
                   },
                 ));
           },
@@ -840,7 +844,11 @@ class _HomePageState extends State<HomePage> {
                           pageBuilder: (context, animation, secondaryAnimation) {
                             FirebaseLogger.logGlobalScreenView(LogScreen.CompanyContentDetail.index);
                             FirebaseLogger.logCompanyScreenView(LogScreen.CompanyContentDetail.index);
-                            return ContentDetailPage(companyContentModel: filteredList[first], index: first);
+                            return ContentDetailPage(
+                              companyContentModel: filteredList[first],
+                              index: first,
+                              inAppDialogSource: false,
+                            );
                           },
                         ));
                   },
@@ -861,7 +869,11 @@ class _HomePageState extends State<HomePage> {
                                 pageBuilder: (context, animation, secondaryAnimation) {
                                   FirebaseLogger.logGlobalScreenView(LogScreen.CompanyContentDetail.index);
                                   FirebaseLogger.logCompanyScreenView(LogScreen.CompanyContentDetail.index);
-                                  return ContentDetailPage(companyContentModel: filteredList[second], index: second);
+                                  return ContentDetailPage(
+                                    companyContentModel: filteredList[second],
+                                    index: second,
+                                    inAppDialogSource: false,
+                                  );
                                 },
                               ));
                         },
