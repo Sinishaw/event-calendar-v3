@@ -71,7 +71,10 @@ class CompanyContentModel {
     _fireStore.cacheGroupedRecords("Contents", topics);
   }
 
-  Future<List<CompanyContentModel>> getUserRelatedContents(String? company, var topics) async {
+  Future<List<CompanyContentModel>> getUserRelatedContents(String? company, var topics, {bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      await _fireStore.syncGroupedRecordsFromServer("Contents", topics);
+    }
     List<QueryDocumentSnapshot> snapShotList = await _fireStore.getGroupedRecords("Contents", topics);
     debugPrint("------- Get User Related Contents of: $company");
     debugPrint("------- Get User Related Content Topics: $topics");

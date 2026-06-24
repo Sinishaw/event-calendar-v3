@@ -8,7 +8,7 @@ import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'content_detail_page.dart';
+import 'package:event_calendar_v2/screens/company/widgets/content_detail_page.dart';
 
 class NationalDayArticlePage extends StatefulWidget {
   const NationalDayArticlePage({super.key, this.nationalDayRef, this.holidayName});
@@ -57,7 +57,11 @@ class _NationalDayArticlePageState extends State<NationalDayArticlePage> {
                   pageBuilder: (context, animation, secondaryAnimation) {
                     FirebaseLogger.logGlobalScreenView(LogScreen.NationalDayArticleDetail.index);
                     FirebaseLogger.logCompanyScreenView(LogScreen.NationalDayArticleDetail.index);
-                    return ContentDetailPage(companyContentModel: _list[index], index: index);
+                    return ContentDetailPage(
+                      companyContentModel: _list[index],
+                      index: index,
+                      inAppDialogSource: false,
+                    );
                   },
                 ),
               );

@@ -24,8 +24,10 @@ class CompanyContentPage extends StatefulWidget {
 class _CompanyContentPageState extends State<CompanyContentPage> {
   List<CompanyContentModel> _listContent = List.empty(growable: true);
   List<String?> topics = [];
+  int selectedIndex = -1;
+  bool _shouldForceRefresh = false;
 
-  _getContents() async {
+  Future<List<CompanyContentModel>> _getContents() async {
     var company = Globals.prefs!.getString(Constants.CompanyPreference);
     topics.clear();
     List<Topic> followedTopics = Topic.getUserSubscribedTopics();
@@ -44,210 +46,247 @@ class _CompanyContentPageState extends State<CompanyContentPage> {
     } else {
       topics.add(Constants.DefaultCompany);
     }
-    _listContent = await CompanyContentModel().getUserRelatedContents(company, topics);
+    _listContent = await CompanyContentModel().getUserRelatedContents(
+      company,
+      topics,
+      forceRefresh: _shouldForceRefresh,
+    );
+    _shouldForceRefresh = false;
     return _listContent;
   }
-
-  int selectedIndex = -1;
 
   detailChangeCallback() {
     setState(() {});
   }
 
-  Widget _getListWidget(var _list) {
-    String deletedId = "";
-    return _list.length > 0
+  Widget _getListWidget(List<CompanyContentModel> list) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final onSurface = theme.colorScheme.onSurface;
+    final cardBg = theme.cardColor;
+
+    return list.isNotEmpty
         ? ListView.builder(
-            itemCount: _list.length,
+            itemCount: list.length,
+            padding: const EdgeInsets.only(top: 10, bottom: 80),
             itemBuilder: (context, index) {
-              return InkWell(
-                onLongPress: () {
-                  setState(() {
-                    selectedIndex = index;
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 5, bottom: 20, left: 5, right: 5),
-                  child: GestureDetector(
+              final content = list[index];
+              final isSelectedForDelete = selectedIndex == index;
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+                decoration: BoxDecoration(
+                  color: cardBg.withOpacity(isDark ? 0.35 : 0.65),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: primaryColor.withValues(alpha: 0.12),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
                     onTap: () {
                       Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            transitionDuration: const Duration(milliseconds: 500),
-                            pageBuilder: (context, animation, secondaryAnimation) {
-                              FirebaseLogger.logGlobalScreenView(LogScreen.CompanyContentDetail.index);
-                              FirebaseLogger.logCompanyScreenView(LogScreen.CompanyContentDetail.index);
-                              return ContentDetailPage(
-                                companyContentModel: _list[index],
-                                index: index,
-                                inAppDialogSource: true,
-                                callback: detailChangeCallback,
-                              );
-                            },
-                          ));
+                        context,
+                        PageRouteBuilder(
+                          transitionDuration: const Duration(milliseconds: 500),
+                          pageBuilder: (context, animation, secondaryAnimation) {
+                            FirebaseLogger.logGlobalScreenView(LogScreen.CompanyContentDetail.index);
+                            FirebaseLogger.logCompanyScreenView(LogScreen.CompanyContentDetail.index);
+                            return ContentDetailPage(
+                              companyContentModel: content,
+                              index: index,
+                              inAppDialogSource: true,
+                              callback: detailChangeCallback,
+                            );
+                          },
+                        ),
+                      );
                     },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.05),
-                      ),
+                    onLongPress: () {
+                      setState(() {
+                        selectedIndex = isSelectedForDelete ? -1 : index;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Header (Logo + Title & Subtitle + Deletion control)
                           Row(
-                            mainAxisSize: MainAxisSize.max,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(
-                                flex: 1,
+                              // Company Logo
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: primaryColor.withValues(alpha: 0.18),
+                                    width: 1,
+                                  ),
+                                ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(15),
+                                  borderRadius: BorderRadius.circular(9),
                                   child: CachedNetworkImage(
-                                    imageUrl: _list[index].logoUrl!,
-                                    fit: BoxFit.contain,
-                                    placeholder: (context, url) => ConstrainedBox(
-                                        constraints: const BoxConstraints(minHeight: 200), child: Container()),
-                                    errorWidget: (context, url, error) => const Icon(Icons.broken_image),
+                                    imageUrl: content.logoUrl!,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) => Icon(
+                                      Icons.business_rounded,
+                                      color: primaryColor,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 12),
+                              // Title & Company Name
                               Expanded(
-                                flex: 5,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      content.title!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.textTheme.bodyLarge?.color,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      content.companyName!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.55),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Delete/Select Actions
+                              if (isSelectedForDelete)
+                                IconButton(
+                                  onPressed: () => _confirmDeleteDialog(context, content, index),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.redAccent,
+                                    size: 24,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Main Image (Banner)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Hero(
+                              tag: "CONTENT_IMAGE_$index",
+                              child: CachedNetworkImage(
+                                imageUrl: content.imageUrl!,
+                                placeholder: (context, url) => ConstrainedBox(
+                                  constraints: const BoxConstraints(minHeight: 200),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: primaryColor,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  height: 200,
+                                  color: primaryColor.withValues(alpha: 0.05),
+                                  child: Icon(Icons.broken_image_rounded, color: primaryColor.withValues(alpha: 0.4), size: 40),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Body text preview
+                          Text(
+                            content.body!,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.75),
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Footer (Date + Share)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "${Utility.getFormattedEtDate(content.frD)}",
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  debugPrint("Sharing Content: ${content.title}");
+                                  if (content.webUrl != null && content.webUrl!.isNotEmpty) {
+                                    Share.share(
+                                      "${content.title}\n\n${content.body}\n\n${content.webUrl}",
+                                      subject: content.title,
+                                    );
+                                  } else {
+                                    Share.share(
+                                      "${content.title}\n\n${content.body}\n\n${content.imageUrl}",
+                                      subject: content.title,
+                                    );
+                                  }
+                                  Globals.prefs!.remove(Constants.DeletedContentsId);
+                                },
                                 child: Container(
-                                  margin: const EdgeInsets.only(left: 10),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: primaryColor.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Text(_list[index].title!, style: const TextStyle(fontSize: 25)),
-                                      Text(_list[index].companyName!),
+                                      Icon(
+                                        Icons.share_rounded,
+                                        size: 14,
+                                        color: primaryColor,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "Share",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: primaryColor,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                               ),
-                              IconButton(
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext ctx) {
-                                      return AlertDialog(
-                                        title: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            Center(child: Text(AppLocalizations.of(context)!.confirmDeletion)),
-                                          ],
-                                        ),
-                                        content: Text(
-                                            '${AppLocalizations.of(context)!.areYouSureYouWantToDelete} ${_list[index].title}?'),
-                                        actions: <Widget>[
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.of(ctx, rootNavigator: true).pop(false);
-                                              setState(() {
-                                                selectedIndex = -1;
-                                              });
-                                            },
-                                            child: const Icon(
-                                              Icons.undo,
-                                              size: 30,
-                                              color: Colors.blueAccent,
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                String? deletedIds =
-                                                    Globals.prefs!.getString(Constants.DeletedContentsId);
-                                                deletedId = _list[index].id!;
-
-                                                if (deletedIds != null) {
-                                                  deletedIds = "$deletedIds $deletedId";
-                                                } else {
-                                                  deletedIds = "$deletedId ";
-                                                }
-                                                Globals.prefs!.setString(Constants.DeletedContentsId, deletedIds);
-                                                selectedIndex = -1;
-                                              });
-                                              showUndoConfirmationSnackBar(ctx, deletedId);
-                                              Navigator.of(ctx, rootNavigator: true).pop(true);
-                                            },
-                                            child: const Icon(
-                                              Icons.delete_forever,
-                                              size: 30,
-                                              color: Colors.redAccent,
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                },
-                                icon: selectedIndex == index
-                                    ? const Icon(
-                                        Icons.delete_forever,
-                                        size: 40,
-                                      )
-                                    : Container(),
-                              )
                             ],
-                          ),
-                          const Divider(),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(5),
-                            child: Hero(
-                              tag: "CONTENT_IMAGE_$index",
-                              child: CachedNetworkImage(
-                                imageUrl: _list[index].imageUrl!,
-                                placeholder: (context, url) => ConstrainedBox(
-                                    constraints: const BoxConstraints(minHeight: 200),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        color: Theme.of(context).primaryColor,
-                                      ),
-                                    )),
-                                errorWidget: (context, url, error) => const Icon(Icons.error),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 10.0, bottom: 10),
-                            child: Text(_list[index].body!,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                ),
-                                maxLines: 5),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "${Utility.getFormattedEtDate(_list[index].frD)}",
-                                  style: TextStyle(color: Theme.of(context).primaryColor),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 20.0),
-                                  child: IconButton(
-                                      onPressed: () {
-                                        debugPrint("Web url: ${_list[index].webUrl}");
-                                        if (_list[index].webUrl != null && _list[index].webUrl!.isNotEmpty) {
-                                          Share.share(
-                                              "${_list[index].title}\n\n${_list[index].body}\n\n${_list[index].webUrl}",
-                                              subject: _list[index].title);
-                                        } else {
-                                          Share.share(
-                                              "${_list[index].title}\n\n${_list[index].body}\n\n${_list[index].imageUrl}",
-                                              subject: _list[index].title);
-                                          debugPrint("No web url is available to share.");
-                                        }
-                                        Globals.prefs!.remove(Constants.DeletedContentsId);
-                                      },
-                                      icon: Icon(
-                                        Icons.share,
-                                        color: Theme.of(context).primaryColor,
-                                      )),
-                                )
-                              ],
-                            ),
                           ),
                         ],
                       ),
@@ -258,63 +297,337 @@ class _CompanyContentPageState extends State<CompanyContentPage> {
             },
           )
         : Center(
-            child: InkWell(
-                onLongPress: () {
-                  setState(() {
-                    Globals.prefs!.remove(Constants.DeletedContentsId);
-                  });
-                },
-                child: Text(AppLocalizations.of(context)!.noDocumentIsFound!)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.folder_open_rounded,
+                  size: 48,
+                  color: primaryColor.withValues(alpha: 0.4),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context)!.noDocumentIsFound,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
           );
   }
 
-  void showUndoConfirmationSnackBar(BuildContext ctx, String deletedId) {
-    Color? tc = Theme.of(context).textTheme.bodyLarge!.color;
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-      backgroundColor: Theme.of(context).dialogBackgroundColor,
-      content: ListTile(
-        title: const Text("Undo Deletion"),
-        leading: IconButton(
-          icon: Icon(
-            Icons.undo,
-            color: tc,
-          ),
-          onPressed: () {
-            debugPrint("Deleted id: $deletedId");
-            String? deletedIds = Globals.prefs!.getString(Constants.DeletedContentsId);
-            debugPrint("Deleted ids list: $deletedIds");
-            String updatedIdList = deletedIds!.replaceAll(deletedId, '');
-            debugPrint("Deleted ids after: $updatedIdList");
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            setState(() {
-              Globals.prefs!.setString(Constants.DeletedContentsId, updatedIdList.trim());
-            });
-          },
-        ),
-        trailing: IconButton(
-            icon: Icon(
-              Icons.delete_forever,
-              color: tc,
+  void _confirmDeleteDialog(BuildContext context, CompanyContentModel content, int index) {
+    showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (BuildContext ctx) {
+        final theme = Theme.of(context);
+        final primary = theme.primaryColor;
+        final isDark = theme.brightness == Brightness.dark;
+        final onSurface = theme.colorScheme.onSurface;
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            width: 300,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: primary.withValues(alpha: 0.18),
+                  blurRadius: 28,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            onPressed: () => ScaffoldMessenger.of(this.context).hideCurrentSnackBar()),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Gradient Header
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.redAccent.withValues(alpha: isDark ? 0.45 : 0.15),
+                          Colors.redAccent.withValues(alpha: isDark ? 0.20 : 0.05),
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.redAccent.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.redAccent,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          AppLocalizations.of(context)!.confirmDeletion,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Accent Divider
+                  Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.redAccent.withValues(alpha: 0.5),
+                          Colors.redAccent.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Content Body
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    child: Text(
+                      '${AppLocalizations.of(context)!.areYouSureYouWantToDelete} "${content.title}"?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: onSurface.withValues(alpha: 0.65),
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  // Action buttons
+                  Container(
+                    height: 1,
+                    color: onSurface.withValues(alpha: 0.08),
+                  ),
+                  IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        // Cancel (Undo)
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.of(ctx, rootNavigator: true).pop(false);
+                              setState(() {
+                                selectedIndex = -1;
+                              });
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(20),
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              AppLocalizations.of(context)!.cancel,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: onSurface.withValues(alpha: 0.55),
+                              ),
+                            ),
+                          ),
+                        ),
+                        VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: onSurface.withValues(alpha: 0.08),
+                        ),
+                        // Confirm Delete
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () {
+                              setState(() {
+                                String? deletedIds = Globals.prefs!.getString(Constants.DeletedContentsId);
+                                String deletedId = content.id!;
+                                if (deletedIds != null) {
+                                  deletedIds = "$deletedIds $deletedId";
+                                } else {
+                                  deletedIds = "$deletedId ";
+                                }
+                                Globals.prefs!.setString(Constants.DeletedContentsId, deletedIds);
+                                selectedIndex = -1;
+                              });
+                              showUndoConfirmationSnackBar(context, content.id!);
+                              Navigator.of(ctx, rootNavigator: true).pop(true);
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.only(
+                                  bottomRight: Radius.circular(20),
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 16,
+                                  color: Colors.redAccent,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  AppLocalizations.of(context)!.delete,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void showUndoConfirmationSnackBar(BuildContext context, String deletedId) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final primary = theme.primaryColor;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: theme.dialogBackgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: primary.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        elevation: 8,
+        content: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Article deleted",
+                style: TextStyle(
+                  color: onSurface.withValues(alpha: 0.85),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                debugPrint("Deleted id: $deletedId");
+                String? deletedIds = Globals.prefs!.getString(Constants.DeletedContentsId);
+                if (deletedIds != null) {
+                  String updatedIdList = deletedIds.replaceAll(deletedId, '').trim();
+                  Globals.prefs!.setString(Constants.DeletedContentsId, updatedIdList);
+                }
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                setState(() {});
+              },
+              icon: Icon(Icons.undo_rounded, size: 16, color: primary),
+              label: Text(
+                AppLocalizations.of(context)!.cancel,
+                style: TextStyle(
+                  color: primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 8),
       ),
-      duration: const Duration(seconds: 10),
-    ));
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    var company = Globals.prefs!.getString(Constants.CompanyPreference);
-    company ??= Constants.DefaultCompany;
+    final theme = Theme.of(context);
+    final primary = theme.primaryColor;
+    final isPopable = Navigator.canPop(context);
+
     return Scaffold(
-      body: FutureBuilder(
-        future: _getContents(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return _getListWidget(snapshot.data);
-          }
-          return const Center(child: Text("Loading..."));
+      appBar: AppBar(
+        title: Text(widget.title ?? AppLocalizations.of(context)!.companyChannel),
+        centerTitle: true,
+        leading: isPopable
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _shouldForceRefresh = true;
+          await _getContents();
+          setState(() {});
         },
+        color: primary,
+        child: FutureBuilder(
+          future: _getContents(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: primary,
+                  strokeWidth: 3,
+                ),
+              );
+            }
+            if (snapshot.hasData) {
+              return _getListWidget(snapshot.data as List<CompanyContentModel>);
+            }
+            return Center(
+              child: Text(
+                "Loading...",
+                style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

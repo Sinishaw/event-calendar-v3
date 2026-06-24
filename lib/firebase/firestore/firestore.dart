@@ -34,6 +34,52 @@ class CloudFireStore {
     return querySnapshotCache.docs;
   }
 
+  Future<void> syncGroupedRecordsFromServer(String collection, var filterArray) async {
+    debugPrint("------ Firestore Server Sync Collection: $collection");
+    debugPrint("------ Firestore Server Sync Filter Array: $filterArray");
+    var serverOption = const GetOptions(source: Source.server);
+
+    DateTime now = DateTime.now();
+    DateTime lastContentUpdatedTimestamp;
+    String? localSavedTimestamp = Globals.prefs!.getString(Constants.ContentLastUpdatedTimeStamp);
+
+    if (localSavedTimestamp == null) {
+      lastContentUpdatedTimestamp = now.subtract(const Duration(days: 15));
+    } else {
+      try {
+        lastContentUpdatedTimestamp = DateTime.parse(localSavedTimestamp);
+      } catch (e) {
+        lastContentUpdatedTimestamp = now.subtract(const Duration(days: 15));
+      }
+    }
+
+    try {
+      QuerySnapshot querySnapshot;
+      if (localSavedTimestamp == null) {
+        querySnapshot = await firestore
+            .collectionGroup(collection)
+            .where('topic', whereIn: filterArray)
+            .where('nationalDay', isEqualTo: "")
+            .where('fetchExpirationDate', isGreaterThanOrEqualTo: now)
+            .get(serverOption);
+      } else {
+        querySnapshot = await firestore
+            .collectionGroup(collection)
+            .where('topic', whereIn: filterArray)
+            .where('nationalDay', isEqualTo: "")
+            .where('ud', isGreaterThanOrEqualTo: lastContentUpdatedTimestamp)
+            .get(serverOption);
+      }
+
+      debugPrint("------ Firestore Sync Length of updated documents: ${querySnapshot.docs.length}");
+      if (querySnapshot.docs.isNotEmpty) {
+        Globals.prefs!.setString(Constants.ContentLastUpdatedTimeStamp, now.toString());
+      }
+    } catch (e) {
+      debugPrint("------ Firestore Sync error: $e");
+    }
+  }
+
   ///Cache first approach.
   void cacheGroupedRecords(String collection, var filterArray) async {
     debugPrint("------ Firestore Collection $collection");
