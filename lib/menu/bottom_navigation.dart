@@ -13,18 +13,18 @@ class BottomNavigation extends StatefulWidget {
 
 class _BottomNavigationState extends State<BottomNavigation> {
   final List<IconData> _inactiveIcons = [
-    Icons.home_outlined,
+    Icons.today_outlined,
     Icons.grid_view_outlined,
-    Icons.transform_rounded,
-    Icons.note_alt_outlined,
+    Icons.change_circle_outlined,
+    Icons.feed_outlined,
     Icons.menu_rounded,
   ];
 
   final List<IconData> _activeIcons = [
-    Icons.home_rounded,
-    Icons.grid_view_rounded,
-    Icons.transform_rounded,
-    Icons.note_alt_rounded,
+    Icons.today,
+    Icons.grid_view,
+    Icons.change_circle,
+    Icons.feed,
     Icons.menu_rounded,
   ];
 
