@@ -247,15 +247,19 @@ class _CompanyContentPageState extends State<CompanyContentPage> {
                               GestureDetector(
                                 onTap: () {
                                   debugPrint("Sharing Content: ${content.title}");
+                                  final RenderBox? box = context.findRenderObject() as RenderBox?;
+                                  final sharePositionOrigin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
                                   if (content.webUrl != null && content.webUrl!.isNotEmpty) {
                                     Share.share(
                                       "${content.title}\n\n${content.body}\n\n${content.webUrl}",
                                       subject: content.title,
+                                      sharePositionOrigin: sharePositionOrigin,
                                     );
                                   } else {
                                     Share.share(
                                       "${content.title}\n\n${content.body}\n\n${content.imageUrl}",
                                       subject: content.title,
+                                      sharePositionOrigin: sharePositionOrigin,
                                     );
                                   }
                                   Globals.prefs!.remove(Constants.DeletedContentsId);

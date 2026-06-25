@@ -146,13 +146,18 @@ class _NationalDayArticlePageState extends State<NationalDayArticlePage> {
                           child: IconButton(
                               onPressed: () {
                                 debugPrint("------ Web url: ${_list[index].webUrl}");
+                                final RenderBox? box = context.findRenderObject() as RenderBox?;
+                                final sharePositionOrigin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
                                 if (_list[index].webUrl != null && _list[index].webUrl!.isNotEmpty) {
-                                  Share.share("${_list[index].title}\n\n${_list[index].body}\n\n${_list[index].webUrl}",
-                                      subject: _list[index].title);
+                                  Share.share(
+                                      "${_list[index].title}\n\n${_list[index].body}\n\n${_list[index].webUrl}",
+                                      subject: _list[index].title,
+                                      sharePositionOrigin: sharePositionOrigin);
                                 } else {
                                   Share.share(
                                       "${_list[index].title}\n\n${_list[index].body}\n\n${_list[index].imageUrl}",
-                                      subject: _list[index].title);
+                                      subject: _list[index].title,
+                                      sharePositionOrigin: sharePositionOrigin);
                                   debugPrint("------ No web url is available to share.");
                                 }
                               },
