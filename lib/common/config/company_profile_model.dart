@@ -64,7 +64,7 @@ class CompanyProfile {
       };
 
   CompanyProfile.fromJson(Map<String, dynamic>? json)
-      : established = json != null ? DateTime.parse(json['established']) : null,
+      : established = json != null ? _parseDateTime(json['established']) : null,
         // id = json != null ? json['id'] : null,
         // documentId = json != null ? json['documentId'] : null,
         // company = json != null ? json['company'] : null,
@@ -88,4 +88,24 @@ class CompanyProfile {
         youtube = json != null ? json['youtube'] : null,
         instagram = json != null ? json['instagram'] : null;
 //endregion
+}
+
+/// Safely parses [value] to a DateTime regardless of whether it arrives
+/// from Remote Config JSON as a date-only string ("2026-09-30") or full ISO 8601 format.
+/// Returns null for null, empty strings, or invalid date formats.
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String) {
+    if (value.isEmpty) return null;
+    // Try parsing as-is first (handles full ISO 8601)
+    DateTime? parsed = DateTime.tryParse(value);
+    if (parsed != null) return parsed;
+    // If it's a date-only format (YYYY-MM-DD), append time component
+    if (value.contains('-') && value.split('-').length == 3) {
+      parsed = DateTime.tryParse('${value}T00:00:00.000Z');
+      return parsed;
+    }
+  }
+  return null;
 }

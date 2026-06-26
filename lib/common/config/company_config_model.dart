@@ -108,7 +108,7 @@ class CompanyConfig {
       };
 
   CompanyConfig.fromJson(Map<String, dynamic>? json)
-      : expirationDate = json != null ? DateTime.parse(json['expirationDate']) : null,
+      : expirationDate = json != null ? _parseDateTime(json['expirationDate']) : null,
         companyName = json != null ? json['name'] : null,
         companyReference = json != null ? json['company'] : null,
         topic = json != null ? json['category'] : null,
@@ -155,4 +155,24 @@ double _parseDouble(dynamic value, {double fallback = 1.0}) {
   if (value is int) return value.toDouble();
   if (value is String) return double.tryParse(value) ?? fallback;
   return fallback;
+}
+
+/// Safely parses [value] to a DateTime regardless of whether it arrives
+/// from Remote Config JSON as a date-only string ("2026-09-30") or full ISO 8601 format.
+/// Returns null for null, empty strings, or invalid date formats.
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String) {
+    if (value.isEmpty) return null;
+    // Try parsing as-is first (handles full ISO 8601)
+    DateTime? parsed = DateTime.tryParse(value);
+    if (parsed != null) return parsed;
+    // If it's a date-only format (YYYY-MM-DD), append time component
+    if (value.contains('-') && value.split('-').length == 3) {
+      parsed = DateTime.tryParse('${value}T00:00:00.000Z');
+      return parsed;
+    }
+  }
+  return null;
 }
