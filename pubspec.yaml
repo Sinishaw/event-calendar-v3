@@ -46,7 +46,7 @@ dependencies:
   flutter_staggered_animations: ^1.1.1
   font_awesome_flutter: ^11.0.0
   flutter_local_notifications: ^19.4.0
-  flutter_native_timezone_updated_gradle: ^2.0.3
+  flutter_timezone: ^3.0.1
   url_launcher: ^6.3.2
   carousel_slider: ^5.1.1
   provider: ^6.1.5
@@ -54,10 +54,7 @@ dependencies:
     sdk: flutter
   intl: any
   home_widget: ^0.8.0
-  workmanager:
-    git:
-      url: https://github.com/sunalwaysknows/flutter_workmanager
-      ref: f37742bcf612c51e9571d623138a21a90a5992ea
+  workmanager: ^0.9.0
   timezone: ^0.10.1
   device_info_plus: ^11.5.0
   permission_handler: ^12.0.1
