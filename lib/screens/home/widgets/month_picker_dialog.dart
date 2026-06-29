@@ -185,13 +185,14 @@ class _MonthPickerDialogState extends State<MonthPickerDialog> with SingleTicker
   Widget _buildHeader(ThemeData theme, Color primaryColor) {
     int startYear = _localShowingYear - (_localShowingYear - 1900) % 12;
     if (startYear < 1900) startYear = 1900;
+    if (_isYearView && startYear > 2039) startYear = 2039;
     
     String headerText = _isYearView
         ? (isGeezNumbers
-            ? "${GeezNumbers.geezYears[startYear - 1900]} - ${GeezNumbers.geezYears[startYear + 11 - 1900]}"
+            ? "${_getSafeGeezYear(startYear)} - ${_getSafeGeezYear(startYear + 11)}"
             : "$startYear - ${startYear + 11}")
         : (isGeezNumbers
-            ? GeezNumbers.geezYears[_localShowingYear - 1900]
+            ? _getSafeGeezYear(_localShowingYear)
             : "$_localShowingYear");
 
     return Padding(
@@ -514,5 +515,13 @@ class _MonthPickerDialogState extends State<MonthPickerDialog> with SingleTicker
     final monthStr = MonthGlobals.gcMonthsShort[gcNow.month! - 1];
 
     return "Gregorian: $weekDayStr, $monthStr ${gcNow.day}, ${gcNow.year}";
+  }
+
+  String _getSafeGeezYear(int year) {
+    final index = year - 1900;
+    if (index >= 0 && index < GeezNumbers.geezYears.length) {
+      return GeezNumbers.geezYears[index];
+    }
+    return "$year";
   }
 }
