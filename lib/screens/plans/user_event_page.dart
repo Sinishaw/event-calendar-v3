@@ -2,6 +2,11 @@ import 'dart:convert';
 import 'package:event_calendar_v2/l10n/app_localizations.dart';
 import 'package:event_calendar_v2/common/geez_numbers.dart';
 import 'package:event_calendar_v2/common/globals.dart';
+import 'package:event_calendar_v2/screens/day_view/models/day_event.dart';
+import 'package:event_calendar_v2/screens/day_view/utils/timeline_utils.dart';
+import 'package:event_calendar_v2/screens/day_view/widgets/all_day_strip.dart';
+import 'package:event_calendar_v2/screens/day_view/widgets/day_nav_header.dart';
+import 'package:event_calendar_v2/screens/day_view/widgets/day_timeline.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
@@ -13,6 +18,7 @@ import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/shared/models/local_time_model.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'widgets/daily_user_event_list.dart';
 import 'widgets/event_category_picker.dart';
@@ -47,10 +53,21 @@ class _UserEventPageState extends State<UserEventPage> {
   final _bodyTextController = TextEditingController();
   late bool isGeezNumbers;
 
+  // Day view embedded state
+  bool _showDayView = false;
+  late DateTime _dayViewDate;
+  List<DayEvent> _dayViewEvents = [];
+  bool _dayViewLoading = false;
+  late ScrollController _dayScrollController;
+  final _notificationsPlugin = FlutterLocalNotificationsPlugin();
+
   getSelectedDateCallBack(LocalDate etSelectedDate, LocalDate gcSelectedDate) {
     setState(() {
       _selectedEtDate = etSelectedDate;
       selectedGcDate = gcSelectedDate;
+      if (gcSelectedDate.year != null && gcSelectedDate.month != null && gcSelectedDate.day != null) {
+        _dayViewDate = DateTime(gcSelectedDate.year!, gcSelectedDate.month!, gcSelectedDate.day!);
+      }
     });
   }
 
@@ -190,6 +207,179 @@ class _UserEventPageState extends State<UserEventPage> {
       result = "$hour : $minute : ${MonthGlobals.timePeriodGc[selectedGcTime!.period!.index]}";
     }
     return result;
+  }
+
+  // ── Day view helpers ──────────────────────────────────────────────────────
+
+  Future<void> _loadDayViewEvents(DateTime date) async {
+    if (!mounted) return;
+    setState(() => _dayViewLoading = true);
+    final primary = Theme.of(context).primaryColor;
+    final pending = await _notificationsPlugin.pendingNotificationRequests();
+    final dayEvents = <DayEvent>[];
+
+    for (final req in pending) {
+      try {
+        final map = jsonDecode(req.payload ?? '{}') as Map<String, dynamic>;
+        final payload = NotificationPayload.fromJson(map);
+        final scheduled = payload.scheduledDateTime;
+        if (scheduled == null) continue;
+        if (scheduled.year == date.year &&
+            scheduled.month == date.month &&
+            scheduled.day == date.day) {
+          dayEvents.add(DayEvent.fromNotificationPayload(payload, primary));
+        }
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      setState(() {
+        _dayViewEvents = dayEvents;
+        _dayViewLoading = false;
+      });
+      _scrollDayViewToCurrentTime();
+    }
+  }
+
+  void _scrollDayViewToCurrentTime() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dayScrollController.hasClients) return;
+      final viewport = _dayScrollController.position.viewportDimension;
+      final offset = TimelineUtils.scrollOffsetForCurrentTime(viewport);
+      _dayScrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  void _onTimelineTimeLongPressed(DateTime time) {
+    final hour24 = time.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? TimePeriod.PM : TimePeriod.AM;
+    int etHour;
+    if (hour24 < 7) {
+      etHour = hour24 + 6;
+    } else if (hour24 < 19) {
+      etHour = hour24 - 6;
+    } else {
+      etHour = hour24 - 18;
+    }
+    setState(() {
+      selectedGcDate = LocalDate.detailed(time.year, time.month, time.day, time.weekday);
+      _selectedEtDate = MonthModel.toEc(year: time.year, month: time.month, day: time.day);
+      selectedGcTime = LocalTime.hourMinute12(hour12, time.minute, period);
+      selectedGcTime24 = LocalTime.hourMinute24(hour: hour24, minute: time.minute);
+      selectedEtTime = LocalTime.hourMinute12(etHour, time.minute, period);
+      _showDayView = false;
+    });
+  }
+
+  // ── Widgets ───────────────────────────────────────────────────────────────
+
+  Widget _tabSwitcher(Color primaryColor, Color cardBg) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      height: 36,
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: primaryColor.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          _tabPill(
+            label: 'Form',
+            active: !_showDayView,
+            primaryColor: primaryColor,
+            onTap: () => setState(() => _showDayView = false),
+          ),
+          _tabPill(
+            label: 'Day View',
+            active: _showDayView,
+            primaryColor: primaryColor,
+            onTap: () {
+              final gcDate = selectedGcDate;
+              final date = gcDate != null && gcDate.year != null
+                  ? DateTime(gcDate.year!, gcDate.month!, gcDate.day!)
+                  : DateTime.now();
+              setState(() {
+                _showDayView = true;
+                _dayViewDate = date;
+              });
+              _loadDayViewEvents(date);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabPill({
+    required String label,
+    required bool active,
+    required Color primaryColor,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: active ? primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: active ? Colors.white : primaryColor.withOpacity(0.55),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDayViewContent() {
+    final theme = Theme.of(context);
+    if (_dayViewLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: theme.primaryColor, strokeWidth: 2),
+      );
+    }
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          DayNavHeader(
+            date: _dayViewDate,
+            onDateChanged: (date) {
+              setState(() => _dayViewDate = date);
+              _loadDayViewEvents(date);
+            },
+          ),
+          const Divider(height: 1),
+          AllDayStrip(events: _dayViewEvents),
+          Expanded(
+            child: DayTimeline(
+              date: _dayViewDate,
+              events: _dayViewEvents,
+              scrollController: _dayScrollController,
+              onTimeLongPressed: _onTimelineTimeLongPressed,
+              bottomPadding: bottomPadding + 24,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   _dateTimePickerRow() {
@@ -843,9 +1033,12 @@ class _UserEventPageState extends State<UserEventPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
 
     MediaQueryData queryData = MediaQuery.of(context);
-    double availableHeight = queryData.size.height - AppBar().preferredSize.height - queryData.padding.top;
+    const double tabSwitcherHeight = 48.0;
+    double availableHeight =
+        queryData.size.height - AppBar().preferredSize.height - queryData.padding.top - tabSwitcherHeight;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -855,210 +1048,221 @@ class _UserEventPageState extends State<UserEventPage> {
             : AppLocalizations.of(context)!.addNewEventOrTask),
         centerTitle: true,
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  if (widget.eventToEdit != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.orange.withValues(alpha: 0.15),
-                            Colors.orange.withValues(alpha: 0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.4),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.withValues(alpha: 0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.edit_rounded,
-                              color: Colors.orange,
-                              size: 14,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              "${AppLocalizations.of(context)!.editEventOrTask}: ${widget.eventToEdit!.title}",
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.orange,
+      body: Column(
+        children: [
+          _tabSwitcher(primaryColor, cardBg),
+          Expanded(
+            child: _showDayView
+                ? _buildDayViewContent()
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              if (widget.eventToEdit != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.orange.withValues(alpha: 0.15),
+                                        Colors.orange.withValues(alpha: 0.05),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.orange.withValues(alpha: 0.4),
+                                      width: 1,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.orange.withValues(alpha: 0.05),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit_rounded,
+                                          color: Colors.orange,
+                                          size: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          "${AppLocalizations.of(context)!.editEventOrTask}: ${widget.eventToEdit!.title}",
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.orange,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              // Title text input
+                              TextField(
+                                controller: _titleTextController,
+                                decoration: InputDecoration(
+                                  hintText: AppLocalizations.of(context)!.titleRequired,
+                                  prefixIcon: Icon(Icons.title_rounded, color: primaryColor.withOpacity(0.7)),
+                                  suffixIcon: IconButton(
+                                    onPressed: () => _titleTextController.clear(),
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
+                                  ),
+                                  filled: true,
+                                  fillColor: isDark ? Colors.white.withOpacity(0.04) : primaryColor.withOpacity(0.04),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: primaryColor.withOpacity(0.12), width: 1),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: primaryColor, width: 1.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                onChanged: (value) => eventTitle = value,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(height: 12),
+                              // Note text input
+                              TextField(
+                                controller: _bodyTextController,
+                                keyboardType: TextInputType.multiline,
+                                maxLines: 2,
+                                decoration: InputDecoration(
+                                  hintText: AppLocalizations.of(context)!.note,
+                                  prefixIcon: Icon(Icons.notes_rounded, color: primaryColor.withOpacity(0.7)),
+                                  suffixIcon: IconButton(
+                                    onPressed: () => _bodyTextController.clear(),
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
+                                  ),
+                                  filled: true,
+                                  fillColor: isDark ? Colors.white.withOpacity(0.04) : primaryColor.withOpacity(0.04),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: primaryColor.withOpacity(0.12), width: 1),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: primaryColor, width: 1.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                onChanged: (value) => eventNote = value,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Row 1: Date & Time Pickers
+                              _dateTimePickerRow(),
+                              const SizedBox(height: 12),
+
+                              // Row 2: Category (Importance) & Alert Schedule
+                              Row(
+                                children: [
+                                  Expanded(child: _eventImportancePicker()),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: _notificationSchedulePicker()),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Row 3: Repeat Recurrence & Selected Active Date Badge
+                              Row(
+                                children: [
+                                  Expanded(child: _repeatNotificationPicker()),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: _activeSelectedDateCard()),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // List Header
+                              Row(
+                                children: [
+                                  Text(
+                                    "PLAN LIST FOR THE DAY",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryColor,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Divider(
+                                      color: primaryColor.withOpacity(0.15),
+                                      height: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Daily events list
+                              if (widget.eventToEdit == null) ...[
+                                SizedBox(
+                                  height: availableHeight / 2.2,
+                                  child: DailyUserEventList(
+                                    selectedEtDate: _selectedEtDate,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  // Title text input
-                  TextField(
-                    controller: _titleTextController,
-                    decoration: InputDecoration(
-                      hintText: AppLocalizations.of(context)!.titleRequired,
-                      prefixIcon: Icon(Icons.title_rounded, color: primaryColor.withOpacity(0.7)),
-                      suffixIcon: IconButton(
-                        onPressed: () => _titleTextController.clear(),
-                        icon: const Icon(Icons.clear_rounded, size: 18),
-                      ),
-                      filled: true,
-                      fillColor: isDark ? Colors.white.withOpacity(0.04) : primaryColor.withOpacity(0.04),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: primaryColor.withOpacity(0.12), width: 1),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: primaryColor, width: 1.5),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onChanged: (value) => eventTitle = value,
-                  ),
-                  const SizedBox(height: 12),
-                  // Note text input
-                  TextField(
-                    controller: _bodyTextController,
-                    keyboardType: TextInputType.multiline,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      hintText: AppLocalizations.of(context)!.note,
-                      prefixIcon: Icon(Icons.notes_rounded, color: primaryColor.withOpacity(0.7)),
-                      suffixIcon: IconButton(
-                        onPressed: () => _bodyTextController.clear(),
-                        icon: const Icon(Icons.clear_rounded, size: 18),
-                      ),
-                      filled: true,
-                      fillColor: isDark ? Colors.white.withOpacity(0.04) : primaryColor.withOpacity(0.04),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: primaryColor.withOpacity(0.12), width: 1),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: primaryColor, width: 1.5),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onChanged: (value) => eventNote = value,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Row 1: Date & Time Pickers
-                  _dateTimePickerRow(),
-                  const SizedBox(height: 12),
-                  
-                  // Row 2: Category (Importance) & Alert Schedule
-                  Row(
-                    children: [
-                      Expanded(child: _eventImportancePicker()),
-                      const SizedBox(width: 12),
-                      Expanded(child: _notificationSchedulePicker()),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Row 3: Repeat Recurrence & Selected Active Date Badge
-                  Row(
-                    children: [
-                      Expanded(child: _repeatNotificationPicker()),
-                      const SizedBox(width: 12),
-                      Expanded(child: _activeSelectedDateCard()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // List Header
-                  Row(
-                    children: [
-                      Text(
-                        "PLAN LIST FOR THE DAY",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: primaryColor,
-                          letterSpacing: 1.0,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Divider(
-                          color: primaryColor.withOpacity(0.15),
-                          height: 1,
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-
-                  // Daily events list
-                  if (widget.eventToEdit == null) ...[
-                    SizedBox(
-                      height: availableHeight / 2.2,
-                      child: DailyUserEventList(
-                        selectedEtDate: _selectedEtDate,
-                      ),
-                    ),
-                  ],
-                ],
+          ),
+        ],
+      ),
+      floatingActionButton: _showDayView
+          ? null
+          : GestureDetector(
+              onLongPress: () => NotificationService().cancelAllNotifications(),
+              child: FloatingActionButton(
+                onPressed: () => _saveEvent(),
+                backgroundColor: primaryColor,
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  widget.eventToEdit != null ? Icons.check_rounded : Icons.save_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ),
-          );
-        },
-      ),
-      floatingActionButton: GestureDetector(
-        onLongPress: () => NotificationService().cancelAllNotifications(),
-        child: FloatingActionButton(
-          onPressed: () => _saveEvent(),
-          backgroundColor: primaryColor,
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(
-            widget.eventToEdit != null ? Icons.check_rounded : Icons.save_rounded,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      ),
       floatingActionButtonLocation: const _CustomFABLocation(),
     );
   }
@@ -1112,6 +1316,7 @@ class _UserEventPageState extends State<UserEventPage> {
   @override
   void initState() {
     super.initState();
+    _dayScrollController = ScrollController();
     NotificationService().requestPermissions();
     isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
     if (widget.eventToEdit != null) {
@@ -1119,10 +1324,16 @@ class _UserEventPageState extends State<UserEventPage> {
     } else {
       _resetEntry(keepDate: false);
     }
+    // Sync day view date to whatever date the form initialized with
+    final gc = selectedGcDate;
+    _dayViewDate = (gc != null && gc.year != null && gc.month != null && gc.day != null)
+        ? DateTime(gc.year!, gc.month!, gc.day!)
+        : DateTime.now();
   }
 
   @override
   void dispose() {
+    _dayScrollController.dispose();
     super.dispose();
   }
 }
