@@ -41,6 +41,7 @@ FirebaseOptions get firebaseOptions => environment == 'prod'
     ? prod.DefaultFirebaseOptions.currentPlatform
     : dev.DefaultFirebaseOptions.currentPlatform;
 
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint("----- Forground Notification Received.");
   await Firebase.initializeApp(options: firebaseOptions);
@@ -159,7 +160,6 @@ Future<String> initializeApp() async {
       debugPrint("------ 4");
       await NotificationService().initNotifications();
       debugPrint("------ 5");
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
       debugPrint("------ 6");
     }).onError((dynamic error, stackTrace) async {
       await Globals.initGlobals();
@@ -215,6 +215,7 @@ void backgroundCallback(Uri? data) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   Workmanager().initialize(callbackDispatcher, isInDebugMode: kDebugMode);
   await Firebase.initializeApp(
     options: firebaseOptions,
