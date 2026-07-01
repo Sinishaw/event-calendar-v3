@@ -1,0 +1,15 @@
+flutter_native_splash:
+  # Background colors match the Dart SplashScreen exactly so the transition is imperceptible.
+  color: "#FAFAFA"
+  color_dark: "#121212"
+
+  # No image — the Dart SplashScreen renders its own animated calendar icon.
+
+  android: true
+  ios: false
+  web: false
+
+  # Android 12+ (API 31) SplashScreen API — blank splash with matching background.
+  android_12:
+    color: "#FAFAFA"
+    color_dark: "#121212"
