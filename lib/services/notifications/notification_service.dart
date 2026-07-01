@@ -127,7 +127,7 @@ class NotificationService {
   Future<void> initNotifications() async {
     await _configureLocalTimeZone();
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('ic_notification');
     final StreamController<String?> selectNotificationStream =
         StreamController<String?>.broadcast();
 
