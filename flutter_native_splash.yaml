@@ -6,7 +6,7 @@ flutter_native_splash:
   # No image — the Dart SplashScreen renders its own animated calendar icon.
 
   android: true
-  ios: false
+  ios: true
   web: false
 
   # Android 12+ (API 31) SplashScreen API — blank splash with matching background.
