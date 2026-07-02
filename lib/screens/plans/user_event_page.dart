@@ -58,7 +58,10 @@ class _UserEventPageState extends State<UserEventPage> {
   late DateTime _dayViewDate;
   List<DayEvent> _dayViewEvents = [];
   bool _dayViewLoading = false;
-  late ScrollController _dayScrollController;
+  static const int _kDayViewInitialPage = 500;
+  late PageController _dayPageController;
+  late DateTime _dayPageBaseDate;
+  final Map<int, ScrollController> _pageScrollControllers = {};
   final _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   getSelectedDateCallBack(LocalDate etSelectedDate, LocalDate gcSelectedDate) {
@@ -241,16 +244,31 @@ class _UserEventPageState extends State<UserEventPage> {
     }
   }
 
+  ScrollController _getScrollController(int page) =>
+      _pageScrollControllers.putIfAbsent(page, () => ScrollController());
+
   void _scrollDayViewToCurrentTime() {
+    final now = DateTime.now();
+    final isToday = _dayViewDate.year == now.year &&
+        _dayViewDate.month == now.month &&
+        _dayViewDate.day == now.day;
+    final page = _dayPageController.hasClients
+        ? (_dayPageController.page?.round() ?? _kDayViewInitialPage)
+        : _kDayViewInitialPage;
+    final sc = _getScrollController(page);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_dayScrollController.hasClients) return;
-      final viewport = _dayScrollController.position.viewportDimension;
-      final offset = TimelineUtils.scrollOffsetForCurrentTime(viewport);
-      _dayScrollController.animateTo(
-        offset,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOut,
-      );
+      if (!sc.hasClients) return;
+      final viewport = sc.position.viewportDimension;
+      if (isToday) {
+        sc.animateTo(
+          TimelineUtils.scrollOffsetForCurrentTime(viewport),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      } else {
+        const morningY = 8 * TimelineUtils.hourHeight;
+        sc.jumpTo((morningY - viewport / 2).clamp(0.0, TimelineUtils.totalHeight));
+      }
     });
   }
 
@@ -304,10 +322,15 @@ class _UserEventPageState extends State<UserEventPage> {
               final date = gcDate != null && gcDate.year != null
                   ? DateTime(gcDate.year!, gcDate.month!, gcDate.day!)
                   : DateTime.now();
+              final targetPage = _kDayViewInitialPage +
+                  date.difference(_dayPageBaseDate).inDays;
               setState(() {
                 _showDayView = true;
                 _dayViewDate = date;
               });
+              if (_dayPageController.hasClients) {
+                _dayPageController.jumpToPage(targetPage);
+              }
               _loadDayViewEvents(date);
             },
           ),
@@ -349,11 +372,6 @@ class _UserEventPageState extends State<UserEventPage> {
 
   Widget _buildDayViewContent() {
     final theme = Theme.of(context);
-    if (_dayViewLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: theme.primaryColor, strokeWidth: 2),
-      );
-    }
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return SafeArea(
       top: false,
@@ -362,24 +380,54 @@ class _UserEventPageState extends State<UserEventPage> {
           DayNavHeader(
             date: _dayViewDate,
             onDateChanged: (date) {
-              setState(() => _dayViewDate = date);
-              _loadDayViewEvents(date);
+              final page = _kDayViewInitialPage +
+                  date.difference(_dayPageBaseDate).inDays;
+              _dayPageController.animateToPage(
+                page,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
             },
           ),
           const Divider(height: 1),
           AllDayStrip(events: _dayViewEvents),
           Expanded(
-            child: DayTimeline(
-              date: _dayViewDate,
-              events: _dayViewEvents,
-              scrollController: _dayScrollController,
-              onTimeLongPressed: _onTimelineTimeLongPressed,
-              bottomPadding: bottomPadding + 24,
+            child: PageView.builder(
+              controller: _dayPageController,
+              onPageChanged: _onDayPageChanged,
+              itemBuilder: (context, page) {
+                final date = _dayPageBaseDate.add(
+                    Duration(days: page - _kDayViewInitialPage));
+                final isCurrentDay = date.year == _dayViewDate.year &&
+                    date.month == _dayViewDate.month &&
+                    date.day == _dayViewDate.day;
+                if (isCurrentDay && _dayViewLoading) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                        color: theme.primaryColor, strokeWidth: 2),
+                  );
+                }
+                return DayTimeline(
+                  date: date,
+                  events: isCurrentDay ? _dayViewEvents : const [],
+                  scrollController: _getScrollController(page),
+                  onTimeLongPressed:
+                      isCurrentDay ? _onTimelineTimeLongPressed : null,
+                  bottomPadding: bottomPadding + 24,
+                );
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _onDayPageChanged(int page) {
+    final newDate =
+        _dayPageBaseDate.add(Duration(days: page - _kDayViewInitialPage));
+    setState(() => _dayViewDate = newDate);
+    _loadDayViewEvents(newDate);
   }
 
   _dateTimePickerRow() {
@@ -1316,7 +1364,6 @@ class _UserEventPageState extends State<UserEventPage> {
   @override
   void initState() {
     super.initState();
-    _dayScrollController = ScrollController();
     NotificationService().requestPermissions();
     isGeezNumbers = Utility.getNumberFormat() != 'Eng' ? true : false;
     if (widget.eventToEdit != null) {
@@ -1329,11 +1376,16 @@ class _UserEventPageState extends State<UserEventPage> {
     _dayViewDate = (gc != null && gc.year != null && gc.month != null && gc.day != null)
         ? DateTime(gc.year!, gc.month!, gc.day!)
         : DateTime.now();
+    _dayPageBaseDate = _dayViewDate;
+    _dayPageController = PageController(initialPage: _kDayViewInitialPage);
   }
 
   @override
   void dispose() {
-    _dayScrollController.dispose();
+    _dayPageController.dispose();
+    for (final sc in _pageScrollControllers.values) {
+      sc.dispose();
+    }
     super.dispose();
   }
 }

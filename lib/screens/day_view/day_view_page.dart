@@ -32,7 +32,10 @@ class DayViewPage extends StatefulWidget {
 
 class _DayViewPageState extends State<DayViewPage> {
   late DateTime _currentDate;
-  late ScrollController _scrollController;
+  static const int _kInitialPage = 500;
+  late PageController _pageController;
+  late DateTime _baseDate;
+  final Map<int, ScrollController> _pageScrollControllers = {};
   final _notificationsPlugin = FlutterLocalNotificationsPlugin();
   List<DayEvent> _events = [];
   bool _loading = true;
@@ -45,13 +48,17 @@ class _DayViewPageState extends State<DayViewPage> {
       widget.initialDate.month,
       widget.initialDate.day,
     );
-    _scrollController = ScrollController();
+    _baseDate = _currentDate;
+    _pageController = PageController(initialPage: _kInitialPage);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadEvents());
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _pageController.dispose();
+    for (final sc in _pageScrollControllers.values) {
+      sc.dispose();
+    }
     super.dispose();
   }
 
@@ -84,22 +91,46 @@ class _DayViewPageState extends State<DayViewPage> {
     }
   }
 
+  ScrollController _getScrollController(int page) =>
+      _pageScrollControllers.putIfAbsent(page, () => ScrollController());
+
   void _scrollToCurrentTime() {
+    final now = DateTime.now();
+    final isToday = _currentDate.year == now.year &&
+        _currentDate.month == now.month &&
+        _currentDate.day == now.day;
+    final page = _pageController.hasClients
+        ? (_pageController.page?.round() ?? _kInitialPage)
+        : _kInitialPage;
+    final sc = _getScrollController(page);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      final viewport = _scrollController.position.viewportDimension;
-      final offset =
-          TimelineUtils.scrollOffsetForCurrentTime(viewport);
-      _scrollController.animateTo(
-        offset,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOut,
-      );
+      if (!sc.hasClients) return;
+      final viewport = sc.position.viewportDimension;
+      if (isToday) {
+        sc.animateTo(
+          TimelineUtils.scrollOffsetForCurrentTime(viewport),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      } else {
+        const morningY = 8 * TimelineUtils.hourHeight;
+        sc.jumpTo((morningY - viewport / 2).clamp(0.0, TimelineUtils.totalHeight));
+      }
     });
   }
 
   void _onDateChanged(DateTime date) {
-    setState(() => _currentDate = date);
+    final page = _kInitialPage + date.difference(_baseDate).inDays;
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _onPageChanged(int page) {
+    final newDate = _baseDate.add(Duration(days: page - _kInitialPage));
+    setState(() => _currentDate = newDate);
     _loadEvents();
   }
 
@@ -139,19 +170,31 @@ class _DayViewPageState extends State<DayViewPage> {
             const Divider(height: 1),
             AllDayStrip(events: _events),
             Expanded(
-              child: _loading
-                  ? Center(
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                itemBuilder: (context, page) {
+                  final date =
+                      _baseDate.add(Duration(days: page - _kInitialPage));
+                  final isCurrentDay = date.year == _currentDate.year &&
+                      date.month == _currentDate.month &&
+                      date.day == _currentDate.day;
+                  if (isCurrentDay && _loading) {
+                    return Center(
                       child: CircularProgressIndicator(
                         color: theme.primaryColor,
                         strokeWidth: 2,
                       ),
-                    )
-                  : DayTimeline(
-                      date: _currentDate,
-                      events: _events,
-                      onTimeLongPressed: _onTimeLongPressed,
-                      scrollController: _scrollController,
-                    ),
+                    );
+                  }
+                  return DayTimeline(
+                    date: date,
+                    events: isCurrentDay ? _events : const [],
+                    onTimeLongPressed: isCurrentDay ? _onTimeLongPressed : null,
+                    scrollController: _getScrollController(page),
+                  );
+                },
+              ),
             ),
           ],
         ),
