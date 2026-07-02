@@ -10,6 +10,7 @@ class NotificationPayload {
   ContentSource? contentSource;
 
   int? gD, gM, gY, eD, eM, eY, weekday, age;
+  int? durationMinutes;
   String? visible;
 
   NotificationPayload(
@@ -32,7 +33,8 @@ class NotificationPayload {
       this.topic,
       this.age,
       this.icon,
-      this.visible});
+      this.visible,
+      this.durationMinutes});
 
   NotificationPayload.fromJson(Map<String, dynamic> json)
       : id = json['id'],
@@ -54,7 +56,8 @@ class NotificationPayload {
         topic = json['topic'],
         age = json['age'],
         icon = json['icon'],
-        visible = json['visible'];
+        visible = json['visible'],
+        durationMinutes = json['durationMinutes'] as int? ?? 60;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -77,5 +80,6 @@ class NotificationPayload {
         'age': age,
         'icon': icon,
         'visible': visible,
+        'durationMinutes': durationMinutes ?? 60,
       };
 }

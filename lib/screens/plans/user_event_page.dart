@@ -48,6 +48,7 @@ class _UserEventPageState extends State<UserEventPage> {
   LocalTime? selectedEtTime, selectedGcTime, selectedGcTime24;
   int? scheduleGc24Hour;
   int? selectedEventTag, selectedRepeatOption, selectedNotificationSchedule;
+  int _selectedDurationMinutes = 60;
 
   final _titleTextController = TextEditingController();
   final _bodyTextController = TextEditingController();
@@ -161,6 +162,8 @@ class _UserEventPageState extends State<UserEventPage> {
     ///Initialize default category selection [Normal Category]
     selectedNotificationSchedule = NotificationScheduleOption.onTime.index;
 
+    _selectedDurationMinutes = 60;
+
     debugPrint("------ ET Selected ${_selectedEtDate!.year} -${_selectedEtDate!.month} -${_selectedEtDate!.day}");
     debugPrint("------ GC Selected ${selectedGcDate!.year} -${selectedGcDate!.month} -${selectedGcDate!.day}");
   }
@@ -219,6 +222,7 @@ class _UserEventPageState extends State<UserEventPage> {
     setState(() => _dayViewLoading = true);
     final primary = Theme.of(context).primaryColor;
     final pending = await _notificationsPlugin.pendingNotificationRequests();
+    final viewDate = DateTime(date.year, date.month, date.day);
     final dayEvents = <DayEvent>[];
 
     for (final req in pending) {
@@ -227,11 +231,29 @@ class _UserEventPageState extends State<UserEventPage> {
         final payload = NotificationPayload.fromJson(map);
         final scheduled = payload.scheduledDateTime;
         if (scheduled == null) continue;
-        if (scheduled.year == date.year &&
-            scheduled.month == date.month &&
-            scheduled.day == date.day) {
-          dayEvents.add(DayEvent.fromNotificationPayload(payload, primary));
+        if (payload.visible == 'false') continue;
+
+        final scheduledDate = DateTime(scheduled.year, scheduled.month, scheduled.day);
+        bool isForDate;
+        DateTime startOnDate;
+
+        switch (payload.repeatOption) {
+          case NotificationRepeatOption.daily:
+            isForDate = !viewDate.isBefore(scheduledDate);
+            startOnDate = DateTime(date.year, date.month, date.day, scheduled.hour, scheduled.minute);
+          case NotificationRepeatOption.weekly:
+            isForDate = scheduled.weekday == date.weekday && !viewDate.isBefore(scheduledDate);
+            startOnDate = DateTime(date.year, date.month, date.day, scheduled.hour, scheduled.minute);
+          default:
+            isForDate = scheduled.year == date.year &&
+                scheduled.month == date.month &&
+                scheduled.day == date.day;
+            startOnDate = scheduled;
         }
+
+        if (!isForDate) continue;
+        dayEvents.add(DayEvent.fromNotificationPayload(payload, primary,
+            overrideStartTime: startOnDate));
       } catch (_) {}
     }
 
@@ -292,6 +314,16 @@ class _UserEventPageState extends State<UserEventPage> {
       selectedEtTime = LocalTime.hourMinute12(etHour, time.minute, period);
       _showDayView = false;
     });
+  }
+
+  void _onDayViewEventLongPressed(DayEvent event) {
+    if (event.payload == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserEventPage(eventToEdit: event.payload),
+      ),
+    ).then((_) => _loadDayViewEvents(_dayViewDate));
   }
 
   // ── Widgets ───────────────────────────────────────────────────────────────
@@ -389,7 +421,7 @@ class _UserEventPageState extends State<UserEventPage> {
               );
             },
           ),
-          const Divider(height: 1),
+          Divider(height: 1, thickness: 0.5, color: theme.colorScheme.secondary),
           AllDayStrip(events: _dayViewEvents),
           Expanded(
             child: PageView.builder(
@@ -413,6 +445,7 @@ class _UserEventPageState extends State<UserEventPage> {
                   scrollController: _getScrollController(page),
                   onTimeLongPressed:
                       isCurrentDay ? _onTimelineTimeLongPressed : null,
+                  onEventLongPressed: _onDayViewEventLongPressed,
                   bottomPadding: bottomPadding + 24,
                 );
               },
@@ -1048,6 +1081,81 @@ class _UserEventPageState extends State<UserEventPage> {
     }
   }
 
+  Widget _durationPicker() {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final cardBg = theme.cardColor;
+
+    const durations = [15, 30, 60, 120, 180];
+    const labels = ['15 min', '30 min', '1 hr', '2 hr', '3 hr'];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cardBg.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.timelapse_rounded, size: 16, color: primaryColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DURATION',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Wrap(
+                  spacing: 5,
+                  children: List.generate(durations.length, (i) {
+                    final isSelected = _selectedDurationMinutes == durations[i];
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedDurationMinutes = durations[i]),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? primaryColor
+                              : primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? Colors.white : primaryColor,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   NotificationPayload _getNotificationPayload({int? id, required DateTime gcSelectedDateTime, bool alertOnly = false}) {
     FocusScope.of(context).requestFocus(FocusNode());
     DateTime now = DateTime.now();
@@ -1072,7 +1180,8 @@ class _UserEventPageState extends State<UserEventPage> {
         contentSource: ContentSource.UserTask,
         topic: "personal",
         age: 3,
-        visible: alertOnly ? 'false' : 'true');
+        visible: alertOnly ? 'false' : 'true',
+        durationMinutes: _selectedDurationMinutes);
     return payload;
   }
 
@@ -1242,6 +1351,10 @@ class _UserEventPageState extends State<UserEventPage> {
                               ),
                               const SizedBox(height: 12),
 
+                              // Row 2b: Duration chips
+                              _durationPicker(),
+                              const SizedBox(height: 12),
+
                               // Row 3: Repeat Recurrence & Selected Active Date Badge
                               Row(
                                 children: [
@@ -1359,6 +1472,7 @@ class _UserEventPageState extends State<UserEventPage> {
     selectedEventTag = payload.eventTagOption?.index ?? EventTagOption.regular.index;
     selectedRepeatOption = payload.repeatOption?.index ?? NotificationRepeatOption.noRecurrence.index;
     selectedNotificationSchedule = payload.scheduleOption?.index ?? NotificationScheduleOption.onTime.index;
+    _selectedDurationMinutes = payload.durationMinutes ?? 60;
   }
 
   @override
