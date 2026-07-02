@@ -6,6 +6,8 @@ import 'package:event_calendar_v2/screens/day_view/widgets/all_day_strip.dart';
 import 'package:event_calendar_v2/screens/day_view/widgets/day_nav_header.dart';
 import 'package:event_calendar_v2/screens/day_view/widgets/day_timeline.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
+import 'package:event_calendar_v2/screens/plans/user_event_page.dart';
+import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -66,6 +68,8 @@ class _DayViewPageState extends State<DayViewPage> {
     if (!mounted) return;
     final primary = Theme.of(context).primaryColor;
     final pending = await _notificationsPlugin.pendingNotificationRequests();
+    final date = _currentDate;
+    final viewDate = DateTime(date.year, date.month, date.day);
     final dayEvents = <DayEvent>[];
 
     for (final req in pending) {
@@ -74,11 +78,29 @@ class _DayViewPageState extends State<DayViewPage> {
         final payload = NotificationPayload.fromJson(map);
         final scheduled = payload.scheduledDateTime;
         if (scheduled == null) continue;
-        if (scheduled.year == _currentDate.year &&
-            scheduled.month == _currentDate.month &&
-            scheduled.day == _currentDate.day) {
-          dayEvents.add(DayEvent.fromNotificationPayload(payload, primary));
+        if (payload.visible == 'false') continue;
+
+        final scheduledDate = DateTime(scheduled.year, scheduled.month, scheduled.day);
+        bool isForDate;
+        DateTime startOnDate;
+
+        switch (payload.repeatOption) {
+          case NotificationRepeatOption.daily:
+            isForDate = !viewDate.isBefore(scheduledDate);
+            startOnDate = DateTime(date.year, date.month, date.day, scheduled.hour, scheduled.minute);
+          case NotificationRepeatOption.weekly:
+            isForDate = scheduled.weekday == date.weekday && !viewDate.isBefore(scheduledDate);
+            startOnDate = DateTime(date.year, date.month, date.day, scheduled.hour, scheduled.minute);
+          default:
+            isForDate = scheduled.year == date.year &&
+                scheduled.month == date.month &&
+                scheduled.day == date.day;
+            startOnDate = scheduled;
         }
+
+        if (!isForDate) continue;
+        dayEvents.add(DayEvent.fromNotificationPayload(payload, primary,
+            overrideStartTime: startOnDate));
       } catch (_) {}
     }
 
@@ -141,6 +163,16 @@ class _DayViewPageState extends State<DayViewPage> {
     }
   }
 
+  void _onEventLongPressed(DayEvent event) {
+    if (event.payload == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserEventPage(eventToEdit: event.payload),
+      ),
+    ).then((_) => _loadEvents());
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,7 +199,7 @@ class _DayViewPageState extends State<DayViewPage> {
               date: _currentDate,
               onDateChanged: _onDateChanged,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, thickness: 0.5, color: Theme.of(context).colorScheme.secondary),
             AllDayStrip(events: _events),
             Expanded(
               child: PageView.builder(
@@ -191,6 +223,7 @@ class _DayViewPageState extends State<DayViewPage> {
                     date: date,
                     events: isCurrentDay ? _events : const [],
                     onTimeLongPressed: isCurrentDay ? _onTimeLongPressed : null,
+                    onEventLongPressed: _onEventLongPressed,
                     scrollController: _getScrollController(page),
                   );
                 },

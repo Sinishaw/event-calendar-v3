@@ -15,6 +15,7 @@ class DayEvent {
   final Color color;
   final EventTagOption tagOption;
   final bool isAllDay;
+  final NotificationPayload? payload;
 
   const DayEvent({
     required this.id,
@@ -25,6 +26,7 @@ class DayEvent {
     required this.color,
     required this.tagOption,
     this.isAllDay = false,
+    this.payload,
   });
 
   /// Maps EventTagOption to its display color, matching daily_user_event_list logic.
@@ -39,18 +41,20 @@ class DayEvent {
 
   factory DayEvent.fromNotificationPayload(
     NotificationPayload payload,
-    Color primaryColor,
-  ) {
-    final start = payload.scheduledDateTime ?? DateTime.now();
+    Color primaryColor, {
+    DateTime? overrideStartTime,
+  }) {
+    final start = overrideStartTime ?? payload.scheduledDateTime ?? DateTime.now();
     final tag = payload.eventTagOption ?? EventTagOption.regular;
     return DayEvent(
       id: payload.id ?? 0,
       title: payload.title ?? '',
       body: payload.body,
       startTime: start,
-      endTime: start.add(const Duration(hours: 1)),
+      endTime: start.add(Duration(minutes: payload.durationMinutes ?? 60)),
       color: colorForTag(tag, primaryColor),
       tagOption: tag,
+      payload: payload,
     );
   }
 

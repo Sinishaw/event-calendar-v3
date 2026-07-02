@@ -9,6 +9,7 @@ class DayEventBlock extends StatelessWidget {
   final double width;
   final double height;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const DayEventBlock({
     super.key,
@@ -16,6 +17,7 @@ class DayEventBlock extends StatelessWidget {
     required this.width,
     required this.height,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -25,12 +27,15 @@ class DayEventBlock extends StatelessWidget {
 
     // Tiny block: just a colored bar, no text at all
     if (height < 14) {
-      return Container(
-        width: width,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.45 : 0.35),
-          borderRadius: BorderRadius.circular(3),
-          border: Border(left: BorderSide(color: color, width: 3)),
+      return GestureDetector(
+        onLongPress: onLongPress,
+        child: Container(
+          width: width,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.45 : 0.35),
+            borderRadius: BorderRadius.circular(3),
+            border: Border(left: BorderSide(color: color, width: 3)),
+          ),
         ),
       );
     }
@@ -41,6 +46,7 @@ class DayEventBlock extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         width: width,
         decoration: BoxDecoration(

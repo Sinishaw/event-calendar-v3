@@ -9,6 +9,7 @@ class DayTimeline extends StatefulWidget {
   final DateTime date;
   final List<DayEvent> events;
   final ValueChanged<DateTime>? onTimeLongPressed;
+  final ValueChanged<DayEvent>? onEventLongPressed;
   final ScrollController? scrollController;
   final double bottomPadding;
 
@@ -17,6 +18,7 @@ class DayTimeline extends StatefulWidget {
     required this.date,
     required this.events,
     this.onTimeLongPressed,
+    this.onEventLongPressed,
     this.scrollController,
     this.bottomPadding = 24.0,
   });
@@ -97,6 +99,9 @@ class _DayTimelineState extends State<DayTimeline> {
                                 event: layout.event,
                                 width: blockWidth,
                                 height: blockH,
+                                onLongPress: widget.onEventLongPressed != null
+                                    ? () => widget.onEventLongPressed!(layout.event)
+                                    : null,
                               ),
                             );
                           }),

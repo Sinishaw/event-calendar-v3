@@ -35,7 +35,7 @@ class DayNavHeader extends StatelessWidget {
             icon: const Icon(Icons.chevron_left_rounded),
             onPressed: () =>
                 onDateChanged(date.subtract(const Duration(days: 1))),
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            color: theme.colorScheme.secondary,
           ),
           GestureDetector(
             onTap: () => onDateChanged(DateTime.now()),
@@ -92,7 +92,7 @@ class DayNavHeader extends StatelessWidget {
             icon: const Icon(Icons.chevron_right_rounded),
             onPressed: () =>
                 onDateChanged(date.add(const Duration(days: 1))),
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            color: theme.colorScheme.secondary,
           ),
         ],
       ),
