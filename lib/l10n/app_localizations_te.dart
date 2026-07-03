@@ -463,4 +463,16 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get clickHereToOpenSource => 'Click here to open source';
+
+  @override
+  String get formTab => 'ቅጺ';
+
+  @override
+  String get dayViewTab => 'ቀን ምርኣይ';
+
+  @override
+  String get duration => 'ቆይታ';
+
+  @override
+  String get planListForTheDay => 'ዕለታዊ ዝርዝር ትልምታት';
 }

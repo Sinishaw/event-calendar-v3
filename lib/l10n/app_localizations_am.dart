@@ -463,4 +463,16 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get clickHereToOpenSource => 'Click here to open source';
+
+  @override
+  String get formTab => 'ቅጽ';
+
+  @override
+  String get dayViewTab => 'ቀን ዕይታ';
+
+  @override
+  String get duration => 'ቆይታ';
+
+  @override
+  String get planListForTheDay => 'ዕለታዊ ዕቅድ ዝርዝር';
 }

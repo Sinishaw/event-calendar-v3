@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'widgets/daily_user_event_list.dart';
+import 'widgets/duration_picker.dart';
 import 'widgets/event_category_picker.dart';
 import 'widgets/notification_repeat_picker.dart';
 import 'widgets/notification_schedule_picker.dart';
@@ -329,43 +330,110 @@ class _UserEventPageState extends State<UserEventPage> {
   // ── Widgets ───────────────────────────────────────────────────────────────
 
   Widget _tabSwitcher(Color primaryColor, Color cardBg) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      height: 36,
-      decoration: BoxDecoration(
-        color: cardBg.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: primaryColor.withOpacity(0.18)),
-      ),
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          _tabPill(
-            label: 'Form',
-            active: !_showDayView,
-            primaryColor: primaryColor,
-            onTap: () => setState(() => _showDayView = false),
+          Expanded(
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: cardBg.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: primaryColor.withOpacity(0.18)),
+              ),
+              child: Row(
+                children: [
+                  _tabPill(
+                    label: l10n.formTab,
+                    active: !_showDayView,
+                    primaryColor: primaryColor,
+                    onTap: () => setState(() => _showDayView = false),
+                  ),
+                  _tabPill(
+                    label: l10n.dayViewTab,
+                    active: _showDayView,
+                    primaryColor: primaryColor,
+                    onTap: () {
+                      final gcDate = selectedGcDate;
+                      final date = gcDate != null && gcDate.year != null
+                          ? DateTime(gcDate.year!, gcDate.month!, gcDate.day!)
+                          : DateTime.now();
+                      final targetPage = _kDayViewInitialPage +
+                          date.difference(_dayPageBaseDate).inDays;
+                      setState(() {
+                        _showDayView = true;
+                        _dayViewDate = date;
+                      });
+                      if (_dayPageController.hasClients) {
+                        _dayPageController.jumpToPage(targetPage);
+                      }
+                      _loadDayViewEvents(date);
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
-          _tabPill(
-            label: 'Day View',
-            active: _showDayView,
-            primaryColor: primaryColor,
-            onTap: () {
-              final gcDate = selectedGcDate;
-              final date = gcDate != null && gcDate.year != null
-                  ? DateTime(gcDate.year!, gcDate.month!, gcDate.day!)
-                  : DateTime.now();
-              final targetPage = _kDayViewInitialPage +
-                  date.difference(_dayPageBaseDate).inDays;
-              setState(() {
-                _showDayView = true;
-                _dayViewDate = date;
-              });
-              if (_dayPageController.hasClients) {
-                _dayPageController.jumpToPage(targetPage);
-              }
-              _loadDayViewEvents(date);
-            },
+          const SizedBox(width: 8),
+          _selectedDateBadge(primaryColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _selectedDateBadge(Color primaryColor) {
+    String gcLine = '--';
+    String etLine = '';
+
+    final gcDate = selectedGcDate;
+    if (gcDate?.month != null && gcDate?.day != null) {
+      gcLine = '${MonthGlobals.gcMonthsShort[(gcDate!.month! - 1).clamp(0, 11)]} ${gcDate.day}';
+    }
+
+    if (_selectedEtDate?.month != null && _selectedEtDate?.day != null) {
+      final monthName = MonthGlobals.etMonthsLong[(_selectedEtDate!.month! - 1).clamp(0, 12)] ?? '';
+      final dayNum = isGeezNumbers
+          ? GeezNumbers.geezNumbers[(_selectedEtDate!.day! - 1).clamp(0, 29)]
+          : '${_selectedEtDate!.day}';
+      etLine = '$monthName $dayNum';
+    }
+
+    return Container(
+      height: 36,
+      constraints: const BoxConstraints(minWidth: 64, maxWidth: 104),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: primaryColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              gcLine,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: primaryColor),
+            ),
           ),
+          if (etLine.isNotEmpty)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                etLine,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w500,
+                  color: primaryColor.withValues(alpha: 0.65),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -457,9 +525,15 @@ class _UserEventPageState extends State<UserEventPage> {
   }
 
   void _onDayPageChanged(int page) {
-    final newDate =
-        _dayPageBaseDate.add(Duration(days: page - _kDayViewInitialPage));
-    setState(() => _dayViewDate = newDate);
+    final newDate = _dayPageBaseDate.add(Duration(days: page - _kDayViewInitialPage));
+    final etDate = MonthModel.toEc(year: newDate.year, month: newDate.month, day: newDate.day);
+    setState(() {
+      _dayViewDate = newDate;
+      selectedGcDate = LocalDate.detailed(newDate.year, newDate.month, newDate.day, newDate.weekday);
+      if (etDate != null) {
+        _selectedEtDate = LocalDate.detailed(etDate.year!, etDate.month!, etDate.day!, newDate.weekday);
+      }
+    });
     _loadDayViewEvents(newDate);
   }
 
@@ -866,73 +940,6 @@ class _UserEventPageState extends State<UserEventPage> {
     );
   }
 
-  _activeSelectedDateCard() {
-    final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: primaryColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: primaryColor.withOpacity(0.15),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.today_rounded,
-              size: 16,
-              color: primaryColor,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "SELECTED DATE",
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: primaryColor.withOpacity(0.7),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    isGeezNumbers
-                        ? "${GeezNumbers.geezNumbers[_selectedEtDate!.day! - 1]} ${MonthGlobals.etWeekNamesLong[selectedGcDate!.weekDay! - 1]}"
-                        : "${_selectedEtDate!.day! > 9 ? "${_selectedEtDate!.day}" : "0${_selectedEtDate!.day}"} ${MonthGlobals.etWeekNamesLong[selectedGcDate!.weekDay! - 1]}",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: primaryColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   bool _isEntryValid(DateTime gcSelectedDateTime) {
     String? message;
     bool isValidEntry = true;
@@ -1081,77 +1088,89 @@ class _UserEventPageState extends State<UserEventPage> {
     }
   }
 
+  getSelectedDurationCallBack(int minutes) {
+    setState(() => _selectedDurationMinutes = minutes);
+  }
+
+  String _durationLabel(int minutes) {
+    switch (minutes) {
+      case 15: return '15 min';
+      case 30: return '30 min';
+      case 60: return '1 hr';
+      case 120: return '2 hr';
+      case 180: return '3 hr';
+      default: return '$minutes min';
+    }
+  }
+
   Widget _durationPicker() {
     final theme = Theme.of(context);
     final primaryColor = theme.primaryColor;
     final cardBg = theme.cardColor;
+    final l10n = AppLocalizations.of(context)!;
 
-    const durations = [15, 30, 60, 120, 180];
-    const labels = ['15 min', '30 min', '1 hr', '2 hr', '3 hr'];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cardBg.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.timelapse_rounded, size: 16, color: primaryColor),
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).requestFocus(FocusNode());
+        showDialog(
+          context: context,
+          builder: (_) => DurationPicker(
+            selectedOption: _selectedDurationMinutes,
+            callback: getSelectedDurationCallBack,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'DURATION',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
-                    letterSpacing: 0.5,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardBg.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: primaryColor.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.timelapse_rounded, size: 16, color: primaryColor),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    l10n.duration.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 5,
-                  children: List.generate(durations.length, (i) {
-                    final isSelected = _selectedDurationMinutes == durations[i];
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedDurationMinutes = durations[i]),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? primaryColor
-                              : primaryColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Text(
-                          labels[i],
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : primaryColor,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    _durationLabel(_selectedDurationMinutes),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1341,35 +1360,32 @@ class _UserEventPageState extends State<UserEventPage> {
                               _dateTimePickerRow(),
                               const SizedBox(height: 12),
 
-                              // Row 2: Category (Importance) & Alert Schedule
+                              // Row 2: Duration (left) & Importance Tag (right)
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(child: _eventImportancePicker()),
+                                  Expanded(child: _durationPicker()),
                                   const SizedBox(width: 12),
-                                  Expanded(child: _notificationSchedulePicker()),
+                                  Expanded(child: _eventImportancePicker()),
                                 ],
                               ),
                               const SizedBox(height: 12),
 
-                              // Row 2b: Duration chips
-                              _durationPicker(),
-                              const SizedBox(height: 12),
-
-                              // Row 3: Repeat Recurrence & Selected Active Date Badge
+                              // Row 3: Schedule Notification & Repeat Notification
                               Row(
                                 children: [
-                                  Expanded(child: _repeatNotificationPicker()),
+                                  Expanded(child: _notificationSchedulePicker()),
                                   const SizedBox(width: 12),
-                                  Expanded(child: _activeSelectedDateCard()),
+                                  Expanded(child: _repeatNotificationPicker()),
                                 ],
                               ),
                               const SizedBox(height: 16),
 
-                              // List Header
+                              // Row 4 Header: Plan List for the Day
                               Row(
                                 children: [
                                   Text(
-                                    "PLAN LIST FOR THE DAY",
+                                    AppLocalizations.of(context)!.planListForTheDay.toUpperCase(),
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
@@ -1388,10 +1404,10 @@ class _UserEventPageState extends State<UserEventPage> {
                               ),
                               const SizedBox(height: 8),
 
-                              // Daily events list
+                              // Row 4: Daily events list
                               if (widget.eventToEdit == null) ...[
                                 SizedBox(
-                                  height: availableHeight / 2.2,
+                                  height: availableHeight / 1.9,
                                   child: DailyUserEventList(
                                     selectedEtDate: _selectedEtDate,
                                   ),

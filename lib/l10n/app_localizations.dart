@@ -1010,6 +1010,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Click here to open source'**
   String get clickHereToOpenSource;
+
+  /// No description provided for @formTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Form'**
+  String get formTab;
+
+  /// No description provided for @dayViewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Day View'**
+  String get dayViewTab;
+
+  /// No description provided for @duration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get duration;
+
+  /// No description provided for @planListForTheDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan List for the Day'**
+  String get planListForTheDay;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
