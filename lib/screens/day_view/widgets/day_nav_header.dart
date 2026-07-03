@@ -46,9 +46,7 @@ class DayNavHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: _isToday
-                        ? primary
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    color: theme.colorScheme.secondary.withValues(alpha: 0.75),
                   ),
                 ),
                 Row(
@@ -59,9 +57,7 @@ class DayNavHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: _isToday
-                            ? primary
-                            : theme.colorScheme.onSurface,
+                        color: theme.colorScheme.secondary,
                       ),
                     ),
                     if (_isToday) ...[

@@ -463,4 +463,16 @@ class AppLocalizationsOr extends AppLocalizations {
 
   @override
   String get clickHereToOpenSource => 'Click here to open source';
+
+  @override
+  String get formTab => 'Foormii';
+
+  @override
+  String get dayViewTab => 'Guyyaa Ilaali';
+
+  @override
+  String get duration => 'Yeroo';
+
+  @override
+  String get planListForTheDay => 'Karoora Guyyaa';
 }

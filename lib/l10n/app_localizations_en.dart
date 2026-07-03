@@ -463,4 +463,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clickHereToOpenSource => 'Click here to open source';
+
+  @override
+  String get formTab => 'Form';
+
+  @override
+  String get dayViewTab => 'Day View';
+
+  @override
+  String get duration => 'Duration';
+
+  @override
+  String get planListForTheDay => 'Plan List for the Day';
 }
