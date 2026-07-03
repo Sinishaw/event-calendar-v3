@@ -7,6 +7,7 @@ import 'package:event_calendar_v2/screens/day_view/utils/timeline_utils.dart';
 import 'package:event_calendar_v2/screens/day_view/widgets/all_day_strip.dart';
 import 'package:event_calendar_v2/screens/day_view/widgets/day_nav_header.dart';
 import 'package:event_calendar_v2/screens/day_view/widgets/day_timeline.dart';
+import 'package:event_calendar_v2/screens/events/models/holiday_and_national_events.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
@@ -256,6 +257,14 @@ class _UserEventPageState extends State<UserEventPage> {
         dayEvents.add(DayEvent.fromNotificationPayload(payload, primary,
             overrideStartTime: startOnDate));
       } catch (_) {}
+    }
+
+    final et = MonthModel.toEc(year: date.year, month: date.month, day: date.day);
+    if (et?.year != null && et?.month != null && et?.day != null) {
+      final nationals = HolidayAndNationalEvents.getDailHolidays(et!.year!, et.month!, et.day!);
+      for (int i = 0; i < nationals.length; i++) {
+        dayEvents.add(DayEvent.fromNationalDay(nationals[i], i));
+      }
     }
 
     if (mounted) {
