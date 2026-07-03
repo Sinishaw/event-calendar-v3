@@ -377,24 +377,19 @@ class _UserEventPageState extends State<UserEventPage> {
             ),
           ),
           const SizedBox(width: 8),
-          _selectedDateBadge(primaryColor, l10n),
+          _selectedDateBadge(primaryColor),
         ],
       ),
     );
   }
 
-  Widget _selectedDateBadge(Color primaryColor, AppLocalizations l10n) {
-    final gcShortMonths = [
-      l10n.jan, l10n.feb, l10n.mar, l10n.apr, l10n.mayShort,
-      l10n.jun, l10n.jul, l10n.aug, l10n.sep, l10n.oct, l10n.nov, l10n.dec,
-    ];
-
+  Widget _selectedDateBadge(Color primaryColor) {
     String gcLine = '--';
     String etLine = '';
 
     final gcDate = selectedGcDate;
     if (gcDate?.month != null && gcDate?.day != null) {
-      gcLine = '${gcShortMonths[(gcDate!.month! - 1).clamp(0, 11)]} ${gcDate.day}';
+      gcLine = '${MonthGlobals.gcMonthsShort[(gcDate!.month! - 1).clamp(0, 11)]} ${gcDate.day}';
     }
 
     if (_selectedEtDate?.month != null && _selectedEtDate?.day != null) {
