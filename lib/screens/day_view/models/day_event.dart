@@ -1,4 +1,5 @@
 import 'package:event_calendar_v2/common/globals.dart';
+import 'package:event_calendar_v2/screens/events/models/fixed_national_events_detail.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,29 @@ class DayEvent {
       return Globals.categoryColorList[index];
     }
     return primaryColor;
+  }
+
+  factory DayEvent.fromNationalDay(FixedNationalEventsDetail holiday, int index) {
+    final gc = holiday.gcDate ?? DateTime.now();
+    final color = _colorForHolidayType(holiday.holidayType);
+    return DayEvent(
+      id: 90000 + index,
+      title: holiday.name ?? '',
+      startTime: DateTime(gc.year, gc.month, gc.day),
+      endTime: DateTime(gc.year, gc.month, gc.day, 23, 59),
+      color: color,
+      tagOption: EventTagOption.national,
+      isAllDay: true,
+    );
+  }
+
+  static Color _colorForHolidayType(HolidayType? type) {
+    switch (type) {
+      case HolidayType.christian: return const Color(0xFFF5A623);
+      case HolidayType.federal:   return const Color(0xFF078930);
+      case HolidayType.muslim:    return const Color(0xFF009688);
+      default:                    return const Color(0xFF7B61FF);
+    }
   }
 
   factory DayEvent.fromNotificationPayload(
