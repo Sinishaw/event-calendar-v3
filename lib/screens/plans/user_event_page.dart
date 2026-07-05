@@ -37,6 +37,7 @@ class UserEventPage extends StatefulWidget {
     this.eventToEdit,
     this.initialShowDayView = false,
     this.initialDayViewDate,
+    this.initialDayViewEvent,
   });
 
   final String? title;
@@ -45,6 +46,11 @@ class UserEventPage extends StatefulWidget {
   final NotificationPayload? eventToEdit;
   final bool initialShowDayView;
   final DateTime? initialDayViewDate;
+
+  /// A specific event to guarantee-show in the day view even if it is no longer
+  /// in the pending-notification list (e.g. a fired one-time event tapped from
+  /// the notification tray). Injected in [_loadDayViewEvents] on the matching date.
+  final NotificationPayload? initialDayViewEvent;
 
   bool get didNotificationLaunchApp => Globals.notificationAppLaunchDetails?.didNotificationLaunchApp ?? false;
 
@@ -274,6 +280,22 @@ class _UserEventPageState extends State<UserEventPage> {
       final nationals = HolidayAndNationalEvents.getDailHolidays(et!.year!, et.month!, et.day!);
       for (int i = 0; i < nationals.length; i++) {
         dayEvents.add(DayEvent.fromNationalDay(nationals[i], i));
+      }
+    }
+
+    // Guarantee-show a tapped event (e.g. a fired one-time notification) that
+    // has already dropped out of the pending list. Only for its own date, and
+    // only if the pending loop above didn't already add it (dedupe by id).
+    final injected = widget.initialDayViewEvent;
+    if (injected != null) {
+      final scheduled = injected.scheduledDateTime;
+      final matchesDate = scheduled != null &&
+          scheduled.year == date.year &&
+          scheduled.month == date.month &&
+          scheduled.day == date.day;
+      final alreadyPresent = dayEvents.any((e) => e.id == injected.id);
+      if (matchesDate && !alreadyPresent) {
+        dayEvents.add(DayEvent.fromNotificationPayload(injected, primary));
       }
     }
 
