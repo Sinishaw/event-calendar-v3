@@ -56,6 +56,23 @@ class CompanyContentModel {
   static const String ROOT_COLLECTION = "Companies";
   static const String CONTENT_COLLECTION = "Contents";
 
+  Future<CompanyContentModel?> getCompanyContentById(String company, String id) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(ROOT_COLLECTION)
+          .doc(company)
+          .collection(CONTENT_COLLECTION)
+          .where('id', isEqualTo: id)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final list = toModelList(snap.docs);
+      return list.isEmpty ? null : list.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<CompanyContentModel>> getCompanyContents(String company) async {
     List<QueryDocumentSnapshot> snapShotList = await _fireStore.getNestedRecords(
       ROOT_COLLECTION,

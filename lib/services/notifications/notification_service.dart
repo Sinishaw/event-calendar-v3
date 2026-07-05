@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
@@ -36,10 +37,15 @@ const String channelNameInterest = "USER INTEREST NOTIFICATION CHANNEL";
 const String channelDescriptionInterest =
     "Notifications that shows based on your selection of interest in side of the app(subscribed interest topics)";
 
-/// TODO: Configure to open notification landing page on notification tap
 class NotificationService {
   static String? selectedNotificationPayload;
   static List<NotificationPayload> globalNotificationPayload = [];
+  static final StreamController<String?> selectNotificationStream =
+      StreamController<String?>.broadcast();
+
+  /// Stores the last tapped notification payload so it survives iOS app-resume timing gaps.
+  /// Cleared after consumption in ContainerPage.
+  static String? pendingTapPayload;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -128,8 +134,6 @@ class NotificationService {
     await _configureLocalTimeZone();
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('ic_notification');
-    final StreamController<String?> selectNotificationStream =
-        StreamController<String?>.broadcast();
 
     /// A notification action which triggers a App navigation event
     const String navigationActionId = 'id_3';
@@ -164,10 +168,12 @@ class NotificationService {
           (NotificationResponse notificationResponse) {
             switch (notificationResponse.notificationResponseType) {
               case NotificationResponseType.selectedNotification:
+                NotificationService.pendingTapPayload = notificationResponse.payload;
                 selectNotificationStream.add(notificationResponse.payload);
                 break;
               case NotificationResponseType.selectedNotificationAction:
                 if (notificationResponse.actionId == navigationActionId) {
+                  NotificationService.pendingTapPayload = notificationResponse.payload;
                   selectNotificationStream.add(notificationResponse.payload);
                 }
                 break;
@@ -175,6 +181,9 @@ class NotificationService {
           },
       // onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
+
+    Globals.notificationAppLaunchDetails =
+        await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
   }
 
   ///Show notification right away (no schedule)
