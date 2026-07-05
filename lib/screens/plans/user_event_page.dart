@@ -29,12 +29,22 @@ import 'widgets/notification_schedule_picker.dart';
 
 class UserEventPage extends StatefulWidget {
   static const String routeName = '/user_events';
-  const UserEventPage({super.key, this.title, this.selectedEtDate, this.fetchLatestEventsCallback, this.eventToEdit});
+  const UserEventPage({
+    super.key,
+    this.title,
+    this.selectedEtDate,
+    this.fetchLatestEventsCallback,
+    this.eventToEdit,
+    this.initialShowDayView = false,
+    this.initialDayViewDate,
+  });
 
   final String? title;
   final LocalDate? selectedEtDate;
   final Function? fetchLatestEventsCallback;
   final NotificationPayload? eventToEdit;
+  final bool initialShowDayView;
+  final DateTime? initialDayViewDate;
 
   bool get didNotificationLaunchApp => Globals.notificationAppLaunchDetails?.didNotificationLaunchApp ?? false;
 
@@ -1517,6 +1527,15 @@ class _UserEventPageState extends State<UserEventPage> {
         : DateTime.now();
     _dayPageBaseDate = _dayViewDate;
     _dayPageController = PageController(initialPage: _kDayViewInitialPage);
+
+    if (widget.initialShowDayView) {
+      _showDayView = true;
+      final target = widget.initialDayViewDate ?? DateTime.now();
+      _dayViewDate = DateTime(target.year, target.month, target.day);
+      _dayPageBaseDate = _dayViewDate;
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _loadDayViewEvents(_dayViewDate));
+    }
   }
 
   @override

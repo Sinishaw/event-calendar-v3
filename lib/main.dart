@@ -33,6 +33,8 @@ import 'screens/topic/model/topic_model.dart';
 import 'shared/models/local_date_model.dart';
 import 'utils/firebase_logger.dart';
 import 'utils/utilities.dart';
+import 'screens/company/widgets/content_detail_page.dart';
+import 'screens/plans/user_event_page.dart';
 import 'screens/splash/splash_screen.dart';
 
 const String environment = String.fromEnvironment('ENV', defaultValue: 'dev');
@@ -372,8 +374,9 @@ class ContainerPage extends StatefulWidget {
   State<ContainerPage> createState() => _ContainerPageState();
 }
 
-class _ContainerPageState extends State<ContainerPage> {
+class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _launchDetailsConsumed = false;
 
   Color? iconsColor;
   // bool _notificationsEnabled = false;
@@ -412,11 +415,112 @@ class _ContainerPageState extends State<ContainerPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     debugPrint('-----------Main: Initializing');
     NotificationService().requestPermissions();
     FcmHandler(context);
     _cacheUserRelatedContents();
+
+    // Foreground taps — stream delivers while app is active
+    NotificationService.selectNotificationStream.stream.listen((payload) {
+      if (!mounted || payload == null) return;
+      NotificationService.pendingTapPayload = null;
+      _handleNotificationTap(payload);
+    });
+
+    // Terminated + fast-resume taps — check on first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingNotification());
   }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // iOS: onDidReceiveNotificationResponse fires just before resumed; by the time
+    // this callback fires, pendingTapPayload is already set.
+    if (state == AppLifecycleState.resumed) {
+      _checkPendingNotification();
+    }
+  }
+
+  void _checkPendingNotification() {
+    // Primary path: set by onDidReceiveNotificationResponse (foreground + background + terminated)
+    final pending = NotificationService.pendingTapPayload;
+    if (pending != null && mounted) {
+      NotificationService.pendingTapPayload = null;
+      _handleNotificationTap(pending);
+      return;
+    }
+    // Fallback: iOS terminated state via getNotificationAppLaunchDetails()
+    if (!_launchDetailsConsumed) {
+      final details = Globals.notificationAppLaunchDetails;
+      if (details?.didNotificationLaunchApp == true) {
+        _launchDetailsConsumed = true;
+        final payload = details!.notificationResponse?.payload;
+        if (payload != null && mounted) _handleNotificationTap(payload);
+      }
+    }
+  }
+
+  void _handleNotificationTap(String rawPayload) {
+    try {
+      final map = jsonDecode(rawPayload) as Map<String, dynamic>;
+      final p = NotificationPayload.fromJson(map);
+
+      switch (p.contentSource) {
+        case ContentSource.UserTask:
+          final gcDate = (p.gY != null && p.gM != null && p.gD != null)
+              ? DateTime(p.gY!, p.gM!, p.gD!)
+              : p.scheduledDateTime ?? DateTime.now();
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => UserEventPage(
+              initialShowDayView: true,
+              initialDayViewDate: gcDate,
+            ),
+          ));
+          break;
+        case ContentSource.CompanyEvent:
+        case ContentSource.TopicEvent:
+        case ContentSource.NationalEvent:
+          _openContentDetail(p);
+          break;
+        default:
+          _goHome();
+      }
+    } catch (_) {
+      _goHome();
+    }
+  }
+
+  void _openContentDetail(NotificationPayload p) async {
+    try {
+      final company =
+          Globals.prefs!.getString(Constants.CompanyPreference) ?? Constants.DefaultCompany;
+      final content =
+          await CompanyContentModel().getCompanyContentById(company, p.id.toString());
+      if (!mounted) return;
+      if (content == null) {
+        _goHome();
+        return;
+      }
+      Navigator.of(context).push(PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => ContentDetailPage(
+          companyContentModel: content,
+          index: 0,
+          inAppDialogSource: false,
+        ),
+      ));
+    } catch (_) {
+      if (mounted) _goHome();
+    }
+  }
+
+  void _goHome() => setState(() => Globals.displayingIndex = 0);
 
   @override
   void didChangeDependencies() {
