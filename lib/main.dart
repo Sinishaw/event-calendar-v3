@@ -480,6 +480,7 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
             builder: (_) => UserEventPage(
               initialShowDayView: true,
               initialDayViewDate: gcDate,
+              initialDayViewEvent: p,
             ),
           ));
           break;
