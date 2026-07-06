@@ -7,6 +7,7 @@ import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/configs/theme/theme_model.dart';
 import 'package:event_calendar_v2/language/language_change_provider.dart';
 import 'package:event_calendar_v2/screens/company/widgets/company_picker_dialog.dart';
+import 'package:event_calendar_v2/services/home_widget/home_widget_service.dart';
 import 'package:event_calendar_v2/screens/topic/model/topic_model.dart';
 import 'package:event_calendar_v2/screens/topic/widgets/topic_picker_dialog.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
@@ -171,6 +172,9 @@ class _SettingPageState extends State<SettingPage> {
       Globals.prefs!.setBool(Constants.UserLanguageOverride, true);
       Provider.of<LanguageChangeProvider>(context, listen: false).changeLocal(languageCode);
     });
+    // Refresh the date widget after the MaterialApp rebuild applies the new
+    // locale, so MonthGlobals' localized ET names are up to date before caching.
+    WidgetsBinding.instance.addPostFrameCallback((_) => HomeWidgetService.refreshNow());
   }
 
   _getCustomSettingList() {
@@ -652,6 +656,8 @@ class _SettingPageState extends State<SettingPage> {
         _numberFormatSelections[i] = i == index;
       }
     });
+    // Keep the home-screen date widget in sync with the new numeral format.
+    HomeWidgetService.refreshNow();
   }
 
   _onPressWeekStartDay(index) {
