@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Freely resizable in both directions. updatePeriodMillis=0 because the app
+     drives updates itself (app resume + a Workmanager one-off at midnight),
+     so the system never overwrites with a stale render. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="80dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="200dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_date"
+    android:previewLayout="@layout/widget_date"
+    android:updatePeriodMillis="0" />

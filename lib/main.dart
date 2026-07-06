@@ -9,6 +9,7 @@ import 'package:event_calendar_v2/language/language_change_provider.dart';
 import 'package:event_calendar_v2/menu/bottom_navigation.dart';
 import 'package:event_calendar_v2/menu/side_menu.dart';
 import 'package:event_calendar_v2/pages.dart';
+import 'package:event_calendar_v2/services/home_widget/home_widget_service.dart';
 import 'package:event_calendar_v2/services/notifications/notification_service.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -179,9 +180,18 @@ Future<String> initializeApp() async {
 /// Used for Background Updates using Workmanager Plugin
 @pragma("vm:entry-point")
 void callbackDispatcher() {
-  Workmanager().executeTask((taskName, inputData) {
+  Workmanager().executeTask((taskName, inputData) async {
+    // Date widget: recompute today's strings from cached data, then reschedule
+    // the next midnight refresh so it keeps rolling over day after day.
+    if (taskName == HomeWidgetService.midnightTaskName) {
+      WidgetsFlutterBinding.ensureInitialized();
+      await HomeWidgetService.updateDateWidget();
+      await HomeWidgetService.scheduleMidnightRefresh();
+      return true;
+    }
+
     final now = DateTime.now();
-    return Future.wait<bool?>([
+    final results = await Future.wait<bool?>([
       HomeWidget.saveWidgetData(
         'title',
         'Updated from Background',
@@ -194,9 +204,8 @@ void callbackDispatcher() {
         name: 'HomeWidgetExampleProvider',
         iOSName: 'HomeWidgetExample',
       ),
-    ]).then((value) {
-      return !value.contains(false);
-    });
+    ]);
+    return !results.contains(false);
   });
 }
 
@@ -430,6 +439,10 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
 
     // Terminated + fast-resume taps — check on first frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingNotification());
+
+    // Keep the Android home-screen date widget current (localized names are
+    // available now that the app is running).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshDateWidget());
   }
 
   @override
@@ -444,8 +457,13 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
     // this callback fires, pendingTapPayload is already set.
     if (state == AppLifecycleState.resumed) {
       _checkPendingNotification();
+      _refreshDateWidget();
     }
   }
+
+  /// Refresh the Android date widget with full localization + schedule the next
+  /// midnight rollover. Android-only; no-op elsewhere.
+  Future<void> _refreshDateWidget() => HomeWidgetService.refreshNow();
 
   void _checkPendingNotification() {
     // Primary path: set by onDidReceiveNotificationResponse (foreground + background + terminated)
