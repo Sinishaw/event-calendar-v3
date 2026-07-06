@@ -11,11 +11,17 @@ import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
-/// Central place for all Android home-screen widget logic.
+/// Central place for all home-screen widget logic (Android + iOS).
 ///
 /// Today it drives the date widget (full Ethiopian date on top, full Gregorian
 /// date below). A future event-list widget adds its own provider + methods here
 /// without disturbing this one.
+///
+/// The same `date_et` / `date_gc` strings feed both platforms: on Android the
+/// `DateWidgetProvider` RemoteViews renders them; on iOS the `DateWidget`
+/// WidgetKit extension reads them (plus a precomputed [_keyDateWindow] so the
+/// timeline can roll over at midnight without the app) from the shared App
+/// Group `UserDefaults`.
 ///
 /// Localized Ethiopian month/weekday names come from [MonthGlobals], which is
 /// only populated while the app runs (it needs a BuildContext). So when the app
@@ -31,9 +37,18 @@ class HomeWidgetService {
   static const String qualifiedAndroidProvider =
       'com.example.event_calendar_v2.DateWidgetProvider';
 
-  /// Keys read by `DateWidgetProvider.kt` via home_widget's SharedPreferences.
+  /// iOS WidgetKit widget kind (matches `StaticConfiguration(kind:)` in Swift).
+  static const String iosWidgetName = 'DateWidget';
+
+  /// Keys read by `DateWidgetProvider.kt` (Android) and `DateWidget.swift` (iOS)
+  /// via home_widget's shared store.
   static const String _keyDateEt = 'date_et';
   static const String _keyDateGc = 'date_gc';
+
+  /// iOS-only: a JSON array of {d, et, gc} for today..+[_windowDays] so the
+  /// WidgetKit timeline can roll the date over at midnight without the app.
+  static const String _keyDateWindow = 'date_window';
+  static const int _windowDays = 14;
 
   /// Cache keys so the background isolate can rebuild strings without a context.
   static const String _prefEtMonths = 'hw_et_months';
@@ -45,17 +60,19 @@ class HomeWidgetService {
   static const String _midnightTaskUnique = 'date_widget_midnight_refresh';
 
   /// Convenience refresh for in-app changes (number format, language): snapshot
-  /// the current localized names, rebuild the widget, and (re)schedule midnight.
-  /// Android-only; a no-op elsewhere and never throws.
+  /// the current localized names and rebuild the widget. On Android it also
+  /// (re)schedules the midnight Workmanager task; on iOS the WidgetKit timeline
+  /// handles midnight rollover via the precomputed window. No-op on other
+  /// platforms and never throws.
   ///
   /// For a language change, call this from a post-frame callback so the new
   /// localized names in [MonthGlobals] are in place before they're cached.
   static Future<void> refreshNow() async {
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid && !Platform.isIOS) return;
     try {
       await cacheLocalizedNames();
       await updateDateWidget();
-      await scheduleMidnightRefresh();
+      if (Platform.isAndroid) await scheduleMidnightRefresh();
     } catch (e) {
       debugPrint('------ Date widget refresh failed: $e');
     }
@@ -84,10 +101,37 @@ class HomeWidgetService {
 
     await HomeWidget.saveWidgetData<String>(_keyDateEt, etString);
     await HomeWidget.saveWidgetData<String>(_keyDateGc, gcString);
+
+    // iOS: precompute a rolling window so the WidgetKit timeline can flip the
+    // date at each midnight without the app running (Swift can't rebuild the
+    // localized Ethiopic/Geez strings itself).
+    if (Platform.isIOS) {
+      await HomeWidget.saveWidgetData<String>(
+          _keyDateWindow, _buildDateWindowJson(now, prefs));
+    }
+
     await HomeWidget.updateWidget(
       androidName: androidProvider,
       qualifiedAndroidName: qualifiedAndroidProvider,
+      iOSName: iosWidgetName,
     );
+  }
+
+  /// JSON array of `{d: 'yyyy-MM-dd', et, gc}` for today..+[_windowDays].
+  static String _buildDateWindowJson(DateTime now, SharedPreferences prefs) {
+    final today = DateTime(now.year, now.month, now.day);
+    final entries = <Map<String, String>>[];
+    for (int i = 0; i <= _windowDays; i++) {
+      final day = today.add(Duration(days: i));
+      entries.add({
+        'd': '${day.year.toString().padLeft(4, '0')}-'
+            '${day.month.toString().padLeft(2, '0')}-'
+            '${day.day.toString().padLeft(2, '0')}',
+        'et': _buildEtDateString(day, prefs),
+        'gc': _buildGcDateString(day),
+      });
+    }
+    return jsonEncode(entries);
   }
 
   /// Register a one-off task that fires ~1 min after the next local midnight,

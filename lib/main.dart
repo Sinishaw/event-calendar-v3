@@ -253,7 +253,9 @@ class _AppState extends State<App> {
   final TextEditingController _messageController = TextEditingController();
   @override
   void initState() {
-    HomeWidget.setAppGroupId('YOUR_GROUP_ID');
+    // App Group shared between the app and the iOS WidgetKit extension; must
+    // match the group id in Runner.entitlements and DateWidget.entitlements.
+    HomeWidget.setAppGroupId('group.com.example.eventCalendarV2');
     HomeWidget.registerBackgroundCallback(backgroundCallback);
     super.initState();
   }
