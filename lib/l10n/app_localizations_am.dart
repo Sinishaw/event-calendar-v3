@@ -240,6 +240,9 @@ class AppLocalizationsAm extends AppLocalizations {
   String get today => 'ዛሬ';
 
   @override
+  String get tomorrow => 'ነገ';
+
+  @override
   String get age => 'ዕድሜ';
 
   @override

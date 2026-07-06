@@ -240,6 +240,9 @@ class AppLocalizationsOr extends AppLocalizations {
   String get today => 'Har\'a';
 
   @override
+  String get tomorrow => 'Bor';
+
+  @override
   String get age => 'Umurii';
 
   @override

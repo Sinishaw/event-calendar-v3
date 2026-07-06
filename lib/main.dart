@@ -253,15 +253,17 @@ class _AppState extends State<App> {
   final TextEditingController _messageController = TextEditingController();
   @override
   void initState() {
-    HomeWidget.setAppGroupId('YOUR_GROUP_ID');
+    // App Group shared between the app and the iOS WidgetKit extension; must
+    // match the group id in Runner.entitlements and DateWidget.entitlements.
+    HomeWidget.setAppGroupId('group.com.example.eventCalendarV2');
     HomeWidget.registerBackgroundCallback(backgroundCallback);
     super.initState();
   }
 
   @override
   void didChangeDependencies() {
-    _checkForWidgetLaunch();
-    HomeWidget.widgetClicked.listen(_launchedFromWidget);
+    // Widget-tap routing is handled in _ContainerPageState (which has the
+    // navigator); nothing to wire here.
     super.didChangeDependencies();
   }
 
@@ -315,21 +317,6 @@ class _AppState extends State<App> {
   Future<void> _sendAndUpdate() async {
     await _sendData();
     await _updateWidget();
-  }
-
-  void _checkForWidgetLaunch() {
-    HomeWidget.initiallyLaunchedFromHomeWidget().then(_launchedFromWidget);
-  }
-
-  void _launchedFromWidget(Uri? uri) {
-    if (uri != null) {
-      showDialog(
-          context: context,
-          builder: (buildContext) => AlertDialog(
-                title: Text('App started from HomeScreenWidget'),
-                content: Text('Here is the URI: $uri'),
-              ));
-    }
   }
 
   void _startBackgroundUpdate() {
@@ -443,6 +430,36 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
     // Keep the Android home-screen date widget current (localized names are
     // available now that the app is running).
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshDateWidget());
+
+    // Home-screen widget taps: "+" (add event) and event/day taps (day view).
+    HomeWidget.widgetClicked.listen((uri) {
+      if (mounted && uri != null) _handleWidgetUri(uri);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      HomeWidget.initiallyLaunchedFromHomeWidget().then((uri) {
+        if (mounted && uri != null) _handleWidgetUri(uri);
+      });
+    });
+  }
+
+  /// Routes a tap coming from the iOS/Android home-screen widget.
+  ///  - `eventcalendarwidget://add`         → add-event form
+  ///  - `eventcalendarwidget://day?d=YYYY-MM-DD` → that day's day view
+  void _handleWidgetUri(Uri uri) {
+    if (!mounted) return;
+    if (uri.host == 'add') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const UserEventPage()),
+      );
+    } else if (uri.host == 'day') {
+      final parsed = DateTime.tryParse(uri.queryParameters['d'] ?? '');
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => UserEventPage(
+          initialShowDayView: true,
+          initialDayViewDate: parsed ?? DateTime.now(),
+        ),
+      ));
+    }
   }
 
   @override

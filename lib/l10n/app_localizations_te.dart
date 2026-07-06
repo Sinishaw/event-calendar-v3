@@ -240,6 +240,9 @@ class AppLocalizationsTe extends AppLocalizations {
   String get today => 'ሎሚዓንቲ';
 
   @override
+  String get tomorrow => 'ጽባሕ';
+
+  @override
   String get age => 'ዕድመ';
 
   @override

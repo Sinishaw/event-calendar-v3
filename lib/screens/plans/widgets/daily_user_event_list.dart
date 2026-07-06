@@ -11,6 +11,7 @@ import 'package:event_calendar_v2/screens/events/models/holiday_and_national_eve
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
+import 'package:event_calendar_v2/services/home_widget/home_widget_service.dart';
 import 'package:event_calendar_v2/services/notifications/notification_service.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:event_calendar_v2/shared/models/local_date_model.dart';
@@ -404,6 +405,8 @@ class DailyUserEventList extends StatelessWidget {
               int notificationEarlyAlertId = payload.id! + 1;
               await NotificationService().cancelNotification(notificationId);
               await NotificationService().cancelNotification(notificationEarlyAlertId);
+              // Reflect the deletion on the home-screen widget(s).
+              await HomeWidgetService.refreshNow();
               if (onEventsChanged != null) {
                 onEventsChanged!();
               }

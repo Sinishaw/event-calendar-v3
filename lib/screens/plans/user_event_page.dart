@@ -11,6 +11,7 @@ import 'package:event_calendar_v2/screens/events/models/holiday_and_national_eve
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
+import 'package:event_calendar_v2/services/home_widget/home_widget_service.dart';
 import 'package:event_calendar_v2/services/notifications/notification_service.dart';
 import 'package:event_calendar_v2/shared/widgets/date_picker_dialog_local.dart';
 import 'package:event_calendar_v2/shared/widgets/time_picker_dialog_local.dart';
@@ -1105,6 +1106,8 @@ class _UserEventPageState extends State<UserEventPage> {
           return;
       }
     }
+    // Reflect the new/updated event on the home-screen widget(s).
+    await HomeWidgetService.refreshNow();
     if (widget.eventToEdit != null) {
       Globals.showSaveResultMessage(
           context: context,
