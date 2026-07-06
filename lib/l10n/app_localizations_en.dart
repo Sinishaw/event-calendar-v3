@@ -240,6 +240,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get today => 'Today';
 
   @override
+  String get tomorrow => 'Tomorrow';
+
+  @override
   String get age => 'Age';
 
   @override
