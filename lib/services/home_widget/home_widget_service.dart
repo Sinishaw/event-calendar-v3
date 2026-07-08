@@ -47,6 +47,12 @@ class HomeWidgetService {
   /// iOS WidgetKit widget kind (matches `StaticConfiguration(kind:)` in Swift).
   static const String iosWidgetName = 'DateWidget';
 
+  /// Android "agenda" widget provider (port of the iOS Large agenda). Uses its
+  /// own `ag_*` data keys so it's fully independent of the other providers.
+  static const String androidAgendaProvider = 'AgendaWidgetProvider';
+  static const String qualifiedAndroidAgendaProvider =
+      'com.example.event_calendar_v2.AgendaWidgetProvider';
+
   /// Keys read by `DateWidgetProvider.kt` (Android) and `DateWidget.swift` (iOS)
   /// via home_widget's shared store.
   static const String _keyDateEt = 'date_et';
@@ -117,11 +123,80 @@ class HomeWidgetService {
           _keyDateWindow, await _buildRichWindowJson(now, prefs));
     }
 
+    // Android agenda widget data (corner dates + today's agenda).
+    if (Platform.isAndroid) {
+      await _saveAndroidAgendaData(now, prefs);
+    }
+
     await HomeWidget.updateWidget(
       androidName: androidProvider,
       qualifiedAndroidName: qualifiedAndroidProvider,
       iOSName: iosWidgetName,
     );
+    if (Platform.isAndroid) {
+      await HomeWidget.updateWidget(
+        androidName: androidAgendaProvider,
+        qualifiedAndroidName: qualifiedAndroidAgendaProvider,
+      );
+    }
+  }
+
+  /// Flat data for the Android agenda widget: ET + GC corner-date components
+  /// (day kept separate so it can be rendered larger) and today's agenda JSON.
+  static Future<void> _saveAndroidAgendaData(
+      DateTime now, SharedPreferences prefs) async {
+    final isGeez = (prefs.getString(_prefNumberFormat) ?? 'ግዕዝ') != 'Eng';
+    final etMonths = _decodeList(prefs.getString(_prefEtMonths));
+    final etWeekdaysLong = _decodeList(prefs.getString(_prefEtWeekdays));
+    final etWeekdaysShort =
+        MonthGlobals.etWeekNamesShort.map((e) => e ?? '').toList();
+
+    String tomorrowLabel = 'Tomorrow';
+    String noEventsLabel = 'No events';
+    final ctx = Globals.context;
+    if (ctx != null) {
+      try {
+        final l10n = AppLocalizations.of(ctx)!;
+        tomorrowLabel = l10n.tomorrow;
+        noEventsLabel = l10n.noEventIsFound;
+      } catch (_) {}
+    }
+
+    // ET corner components.
+    final et = MonthModel.toEc(year: now.year, month: now.month, day: now.day);
+    if (et?.year != null && et?.month != null && et?.day != null) {
+      final mIdx = (et!.month! - 1).clamp(0, 12);
+      final etMonthName = (etMonths.length > mIdx && etMonths[mIdx].isNotEmpty)
+          ? etMonths[mIdx]
+          : (MonthGlobals.etMonthsLong[mIdx] ?? '');
+      final etWeekday = (etWeekdaysLong.length == 7 &&
+              etWeekdaysLong[now.weekday - 1].isNotEmpty)
+          ? etWeekdaysLong[now.weekday - 1]
+          : MonthGlobals.gcWeekNamesLong[now.weekday - 1];
+      await HomeWidget.saveWidgetData<String>('ag_et_weekday', etWeekday);
+      await HomeWidget.saveWidgetData<String>(
+          'ag_et_day', _num(et.day!, isGeez, isDay: true));
+      await HomeWidget.saveWidgetData<String>('ag_et_month_year',
+          '$etMonthName ${_num(et.year!, isGeez, isDay: false)}');
+    }
+
+    // GC corner components (always English).
+    await HomeWidget.saveWidgetData<String>(
+        'ag_gc_weekday', MonthGlobals.gcWeekNamesLong[now.weekday - 1]);
+    await HomeWidget.saveWidgetData<String>('ag_gc_day', '${now.day}');
+    await HomeWidget.saveWidgetData<String>('ag_gc_month_year',
+        '${MonthGlobals.gcMonthsLong[now.month - 1]} ${now.year}');
+
+    // Today's agenda (rolls forward when today is empty).
+    List<NotificationPayload> events = [];
+    try {
+      events = await NotificationService().getAllNotificationsList();
+    } catch (_) {}
+    final today = DateTime(now.year, now.month, now.day);
+    final agenda = _agendaFrom(
+        events, today, isGeez, etMonths, etWeekdaysShort, tomorrowLabel);
+    await HomeWidget.saveWidgetData<String>('agenda_today', jsonEncode(agenda));
+    await HomeWidget.saveWidgetData<String>('agenda_empty', noEventsLabel);
   }
 
   /// JSON array (today..+[_windowDays]) where each entry carries everything the
@@ -238,14 +313,21 @@ class HomeWidgetService {
           : (delta == 1
               ? tomorrowLabel
               : _shortEtLabel(day, isGeez, etMonths, etWeekdaysShort));
+      final dayStr = '${day.year.toString().padLeft(4, '0')}-'
+          '${day.month.toString().padLeft(2, '0')}-'
+          '${day.day.toString().padLeft(2, '0')}';
       for (final e in dayEvents) {
         if (items.length >= maxItems) break;
+        final s = e.scheduledDateTime;
         items.add({
           'title': e.title ?? '',
           'detail': e.body ?? '',
           'colorHex': _colorHexForTag(e.eventTagOption),
           'dateLabel': label,
-          'time': _clock(e.scheduledDateTime),
+          'time': _clock(s),
+          // For the Android widget's per-event tap → open that day, scrolled.
+          'gcDate': dayStr,
+          'scrollMin': s != null ? s.hour * 60 + s.minute : 0,
         });
       }
     }
