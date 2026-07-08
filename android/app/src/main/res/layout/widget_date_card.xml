@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Centered vertical stack, all-Ethiopian except the bottom line:
+       weekday
+         DAY        (large; expands to fill the middle)
+       month year
+       full Gregorian date
+     Fully transparent; white text + dark halo for legibility on any wallpaper.
+     Every line is single-line + autosizing, so it never wraps and stays
+     responsive from 2x1 up to 2x2. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_card_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@android:color/transparent"
+    android:paddingHorizontal="10dp"
+    android:paddingVertical="6dp"
+    tools:ignore="UnusedAttribute">
+
+    <!-- Ethiopian weekday -->
+    <TextView
+        android:id="@+id/tv_card_weekday"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#FFFFFFFF"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:shadowColor="#CC2B2B2B"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="3"
+        android:textSize="16sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="11sp"
+        android:autoSizeMaxTextSize="20sp"
+        android:autoSizeStepGranularity="1sp" />
+
+    <!-- Big Ethiopian day number — expands to fill the free vertical space -->
+    <TextView
+        android:id="@+id/tv_card_day"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:maxLines="1"
+        android:includeFontPadding="false"
+        android:textColor="#FFFFFFFF"
+        android:textStyle="bold"
+        android:shadowColor="#CC2B2B2B"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="3"
+        android:textSize="56sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="24sp"
+        android:autoSizeMaxTextSize="88sp"
+        android:autoSizeStepGranularity="1sp" />
+
+    <!-- Ethiopian month + year -->
+    <TextView
+        android:id="@+id/tv_card_month_year"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#FFFFFFFF"
+        android:letterSpacing="0.02"
+        android:shadowColor="#CC2B2B2B"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="3"
+        android:textSize="15sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="10sp"
+        android:autoSizeMaxTextSize="18sp"
+        android:autoSizeStepGranularity="1sp" />
+
+    <!-- Full Gregorian date -->
+    <TextView
+        android:id="@+id/tv_card_gc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#FFFFFFFF"
+        android:shadowColor="#CC2B2B2B"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="3"
+        android:textSize="12sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="9sp"
+        android:autoSizeMaxTextSize="14sp"
+        android:autoSizeStepGranularity="1sp" />
+</LinearLayout>

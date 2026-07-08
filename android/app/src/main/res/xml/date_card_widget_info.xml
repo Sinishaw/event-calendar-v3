@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Medium "date card". Width locked at 2 columns; height resizable between
+     1 and 2 rows (so 2x1 up to 2x2, never larger). updatePeriodMillis=0 because
+     the app drives updates (resume / event change / midnight). -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="140dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="140dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="150dp"
+    android:maxResizeHeight="150dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:resizeMode="vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_date_card"
+    android:previewLayout="@layout/widget_date_card"
+    android:updatePeriodMillis="0" />

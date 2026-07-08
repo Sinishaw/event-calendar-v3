@@ -39,10 +39,13 @@ import 'package:workmanager/workmanager.dart';
 class HomeWidgetService {
   HomeWidgetService._();
 
-  /// Android provider class (relative + fully-qualified forms for home_widget).
+  /// Android provider classes (relative + fully-qualified forms for home_widget).
   static const String androidProvider = 'DateWidgetProvider';
   static const String qualifiedAndroidProvider =
       'com.example.event_calendar_v2.DateWidgetProvider';
+  static const String androidCardProvider = 'DateCardWidgetProvider';
+  static const String qualifiedAndroidCardProvider =
+      'com.example.event_calendar_v2.DateCardWidgetProvider';
 
   /// iOS WidgetKit widget kind (matches `StaticConfiguration(kind:)` in Swift).
   static const String iosWidgetName = 'DateWidget';
@@ -57,6 +60,11 @@ class HomeWidgetService {
   /// via home_widget's shared store.
   static const String _keyDateEt = 'date_et';
   static const String _keyDateGc = 'date_gc';
+
+  /// Flat ET components for today, read by `DateCardWidgetProvider.kt` (Android).
+  static const String _keyEtDay = 'et_day';
+  static const String _keyEtWeekday = 'et_weekday';
+  static const String _keyEtMonthYear = 'et_month_year';
 
   /// iOS-only: a JSON array of {d, et, gc} for today..+[_windowDays] so the
   /// WidgetKit timeline can roll the date over at midnight without the app.
@@ -115,6 +123,9 @@ class HomeWidgetService {
     await HomeWidget.saveWidgetData<String>(_keyDateEt, etString);
     await HomeWidget.saveWidgetData<String>(_keyDateGc, gcString);
 
+    // Flat ET components for the Android "date card" widget.
+    await _saveEtComponents(now, prefs);
+
     // iOS: precompute a rich rolling window so the WidgetKit timeline can flip
     // the date, month grid, holiday context and event count at each midnight
     // without the app running (Swift can't rebuild the localized data itself).
@@ -134,6 +145,12 @@ class HomeWidgetService {
       iOSName: iosWidgetName,
     );
     if (Platform.isAndroid) {
+      // Second Android provider (date card) — same shared data.
+      await HomeWidget.updateWidget(
+        androidName: androidCardProvider,
+        qualifiedAndroidName: qualifiedAndroidCardProvider,
+      );
+      // Third Android provider (agenda).
       await HomeWidget.updateWidget(
         androidName: androidAgendaProvider,
         qualifiedAndroidName: qualifiedAndroidAgendaProvider,
@@ -197,6 +214,34 @@ class HomeWidgetService {
         events, today, isGeez, etMonths, etWeekdaysShort, tomorrowLabel);
     await HomeWidget.saveWidgetData<String>('agenda_today', jsonEncode(agenda));
     await HomeWidget.saveWidgetData<String>('agenda_empty', noEventsLabel);
+  }
+
+  /// Today's Ethiopian day / weekday / "month year" as flat strings, numerals
+  /// per the Geez/English setting. Read by `DateCardWidgetProvider.kt`.
+  static Future<void> _saveEtComponents(
+      DateTime now, SharedPreferences prefs) async {
+    final et = MonthModel.toEc(year: now.year, month: now.month, day: now.day);
+    if (et == null || et.year == null || et.month == null || et.day == null) {
+      return;
+    }
+    final isGeez = (prefs.getString(_prefNumberFormat) ?? 'ግዕዝ') != 'Eng';
+    final etMonths = _decodeList(prefs.getString(_prefEtMonths));
+    final etWeekdays = _decodeList(prefs.getString(_prefEtWeekdays));
+
+    final weekday = (etWeekdays.length == 7 &&
+            etWeekdays[now.weekday - 1].isNotEmpty)
+        ? etWeekdays[now.weekday - 1]
+        : MonthGlobals.gcWeekNamesLong[now.weekday - 1];
+    final mIdx = (et.month! - 1).clamp(0, 12);
+    final monthName = (etMonths.length > mIdx && etMonths[mIdx].isNotEmpty)
+        ? etMonths[mIdx]
+        : (MonthGlobals.etMonthsLong[mIdx] ?? '');
+
+    await HomeWidget.saveWidgetData<String>(
+        _keyEtDay, _num(et.day!, isGeez, isDay: true));
+    await HomeWidget.saveWidgetData<String>(_keyEtWeekday, weekday);
+    await HomeWidget.saveWidgetData<String>(
+        _keyEtMonthYear, '$monthName ${_num(et.year!, isGeez, isDay: false)}');
   }
 
   /// JSON array (today..+[_windowDays]) where each entry carries everything the
