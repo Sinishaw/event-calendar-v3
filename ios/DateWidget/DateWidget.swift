@@ -31,6 +31,8 @@ struct AgendaItem: Decodable {
     let colorHex: String
     let dateLabel: String
     let time: String
+    let gcDate: String?   // yyyy-MM-dd of the event (for tap → open that day)
+    let scrollMin: Int?   // minutes-of-day to scroll the day view to
 }
 
 struct DayData: Decodable {
@@ -229,23 +231,34 @@ private struct LargeAgendaView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
             } else {
-                VStack(spacing: 5) {
+                // Content-sized rows packed at the top; a single event does not
+                // stretch. Each row taps through to its own day + time.
+                VStack(spacing: 6) {
                     ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                        AgendaRow(item: item)
+                        Link(destination: URL(string:
+                            "\(widgetScheme)://open/day?d=\(item.gcDate ?? day.d)&t=\(item.scrollMin ?? 0)")!) {
+                            AgendaRow(item: item)
+                        }
                     }
                 }
-                Spacer(minLength: 2)
+                .frame(maxWidth: .infinity, alignment: .top)
+                Spacer(minLength: 0)
             }
 
-            Link(destination: URL(string: "\(widgetScheme)://add")!) {
+            // Bottom strip → add-event form (defaults to today). Full-width hit
+            // target so the tap reliably routes to "add", not the widgetURL.
+            Link(destination: URL(string: "\(widgetScheme)://open/add")!) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 26))
                     .foregroundStyle(.tint)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "\(widgetScheme)://day?d=\(day.d)"))
+        .widgetURL(URL(string: "\(widgetScheme)://open/day?d=\(day.d)"))
     }
 }
 
@@ -308,6 +321,7 @@ private struct AgendaRow: View {
         .padding(.horizontal, 6)
         .background(Color(hex: item.colorHex).opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .fixedSize(horizontal: false, vertical: true) // take only the needed height
     }
 }
 
