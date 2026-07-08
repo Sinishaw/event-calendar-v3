@@ -40,6 +40,32 @@ import 'screens/splash/splash_screen.dart';
 
 const String environment = String.fromEnvironment('ENV', defaultValue: 'dev');
 
+/// True if [uri] is a home-screen widget deep link (`…/day` or `…/add`). iOS
+/// delivers these via Flutter's route channel; the host is dropped, so the
+/// action lives in the first path segment.
+bool _isWidgetLink(Uri? uri) {
+  if (uri == null) return false;
+  final seg = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+  return seg == 'day' || seg == 'add';
+}
+
+/// The page a widget deep link opens: `add` → the add-event form (defaults to
+/// today); `day` → the day view on `d`, scrolled to `t` (minutes-of-day).
+Route<dynamic> _widgetPageRoute(Uri uri) {
+  if (uri.pathSegments.first == 'add') {
+    return MaterialPageRoute(builder: (_) => const UserEventPage());
+  }
+  final d = DateTime.tryParse(uri.queryParameters['d'] ?? '');
+  final t = int.tryParse(uri.queryParameters['t'] ?? '');
+  return MaterialPageRoute(
+    builder: (_) => UserEventPage(
+      initialShowDayView: true,
+      initialDayViewDate: d ?? DateTime.now(),
+      initialDayViewScrollMinutes: t,
+    ),
+  );
+}
+
 FirebaseOptions get firebaseOptions => environment == 'prod'
     ? prod.DefaultFirebaseOptions.currentPlatform
     : dev.DefaultFirebaseOptions.currentPlatform;
@@ -356,7 +382,24 @@ class _AppState extends State<App> {
           theme: themeProvider.currentTheme,
           locale: languageProvider.getCurrentLocale(),
           navigatorObservers: <NavigatorObserver>[App.observer],
-          home: const SplashScreen(),
+          // The app boots at SplashScreen via onGenerateInitialRoutes (can't use
+          // `home:` alongside it). Home-screen widget deep links
+          // (eventcalendarwidget://open/day|add) arrive on iOS via the route
+          // channel. Cold start: always boot the splash and stash the link for
+          // ContainerPage to consume after init.
+          onGenerateInitialRoutes: (initialRoute) {
+            final uri = Uri.tryParse(initialRoute);
+            if (_isWidgetLink(uri)) HomeWidgetService.pendingWidgetUri = uri;
+            return [MaterialPageRoute(builder: (_) => const SplashScreen())];
+          },
+          // Warm: a widget tap pushes its route → open the target directly.
+          onGenerateRoute: (settings) {
+            final uri = Uri.tryParse(settings.name ?? '');
+            if (_isWidgetLink(uri)) return _widgetPageRoute(uri!);
+            return null;
+          },
+          onUnknownRoute: (settings) =>
+              MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       },
     );
@@ -431,7 +474,11 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
     // available now that the app is running).
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshDateWidget());
 
-    // Home-screen widget taps: "+" (add event) and event/day taps (day view).
+    // Home-screen widget taps.
+    //  • Android: delivered here via home_widget's widgetClicked / launch.
+    //  • iOS (scene delegate): delivered via Flutter's route channel →
+    //    onGenerateRoute (warm) or onGenerateInitialRoutes → pendingWidgetUri
+    //    (cold), which we consume below.
     HomeWidget.widgetClicked.listen((uri) {
       if (mounted && uri != null) _handleWidgetUri(uri);
     });
@@ -439,20 +486,27 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
       HomeWidget.initiallyLaunchedFromHomeWidget().then((uri) {
         if (mounted && uri != null) _handleWidgetUri(uri);
       });
+      // Cold-start widget link stashed during onGenerateInitialRoutes.
+      final pending = HomeWidgetService.pendingWidgetUri;
+      if (pending != null) {
+        HomeWidgetService.pendingWidgetUri = null;
+        _handleWidgetUri(pending);
+      }
     });
   }
 
-  /// Routes a tap coming from the iOS/Android home-screen widget.
-  ///  - `eventcalendarwidget://add`                     → add-event form
-  ///  - `eventcalendarwidget://day?d=YYYY-MM-DD&t=<min>` → that day's day view,
-  ///    scrolled to minute-of-day `t` (a tapped agenda event's time).
+  /// Routes a tap coming from the iOS/Android home-screen widget. The action is
+  /// the URI host (Android: `eventcalendarwidget://day|add`) or, when iOS routes
+  /// it and drops the host, the first path segment (`…/day|add`).
   void _handleWidgetUri(Uri uri) {
     if (!mounted) return;
-    if (uri.host == 'add') {
+    final seg = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+    final action = (uri.host == 'add' || uri.host == 'day') ? uri.host : seg;
+    if (action == 'add') {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const UserEventPage()),
       );
-    } else if (uri.host == 'day') {
+    } else if (action == 'day') {
       final parsed = DateTime.tryParse(uri.queryParameters['d'] ?? '');
       final t = int.tryParse(uri.queryParameters['t'] ?? '');
       Navigator.of(context).push(MaterialPageRoute(

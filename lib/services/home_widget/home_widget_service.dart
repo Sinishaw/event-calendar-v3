@@ -56,6 +56,10 @@ class HomeWidgetService {
   static const String qualifiedAndroidAgendaProvider =
       'com.example.event_calendar_v2.AgendaWidgetProvider';
 
+  /// A widget deep-link (`eventcalendarwidget://open/day|add`) captured at cold
+  /// start before the UI is ready; consumed by `ContainerPage` once mounted.
+  static Uri? pendingWidgetUri;
+
   /// Keys read by `DateWidgetProvider.kt` (Android) and `DateWidget.swift` (iOS)
   /// via home_widget's shared store.
   static const String _keyDateEt = 'date_et';
