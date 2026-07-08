@@ -443,8 +443,9 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
   }
 
   /// Routes a tap coming from the iOS/Android home-screen widget.
-  ///  - `eventcalendarwidget://add`         → add-event form
-  ///  - `eventcalendarwidget://day?d=YYYY-MM-DD` → that day's day view
+  ///  - `eventcalendarwidget://add`                     → add-event form
+  ///  - `eventcalendarwidget://day?d=YYYY-MM-DD&t=<min>` → that day's day view,
+  ///    scrolled to minute-of-day `t` (a tapped agenda event's time).
   void _handleWidgetUri(Uri uri) {
     if (!mounted) return;
     if (uri.host == 'add') {
@@ -453,10 +454,12 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
       );
     } else if (uri.host == 'day') {
       final parsed = DateTime.tryParse(uri.queryParameters['d'] ?? '');
+      final t = int.tryParse(uri.queryParameters['t'] ?? '');
       Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => UserEventPage(
           initialShowDayView: true,
           initialDayViewDate: parsed ?? DateTime.now(),
+          initialDayViewScrollMinutes: t,
         ),
       ));
     }

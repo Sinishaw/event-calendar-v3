@@ -39,6 +39,7 @@ class UserEventPage extends StatefulWidget {
     this.initialShowDayView = false,
     this.initialDayViewDate,
     this.initialDayViewEvent,
+    this.initialDayViewScrollMinutes,
   });
 
   final String? title;
@@ -52,6 +53,10 @@ class UserEventPage extends StatefulWidget {
   /// in the pending-notification list (e.g. a fired one-time event tapped from
   /// the notification tray). Injected in [_loadDayViewEvents] on the matching date.
   final NotificationPayload? initialDayViewEvent;
+
+  /// Minutes-since-midnight to scroll the day-view timeline to on open (e.g. a
+  /// widget agenda tap → scroll to that event's time). Consumed once.
+  final int? initialDayViewScrollMinutes;
 
   bool get didNotificationLaunchApp => Globals.notificationAppLaunchDetails?.didNotificationLaunchApp ?? false;
 
@@ -81,6 +86,7 @@ class _UserEventPageState extends State<UserEventPage> {
   static const int _kDayViewInitialPage = 500;
   late PageController _dayPageController;
   late DateTime _dayPageBaseDate;
+  int? _targetScrollMinutes; // one-shot: scroll the timeline here on open
   final Map<int, ScrollController> _pageScrollControllers = {};
   final _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -321,10 +327,20 @@ class _UserEventPageState extends State<UserEventPage> {
         ? (_dayPageController.page?.round() ?? _kDayViewInitialPage)
         : _kDayViewInitialPage;
     final sc = _getScrollController(page);
+    // One-shot: a widget agenda tap asked us to scroll to a specific event time.
+    final targetMinutes = _targetScrollMinutes;
+    _targetScrollMinutes = null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!sc.hasClients) return;
       final viewport = sc.position.viewportDimension;
-      if (isToday) {
+      if (targetMinutes != null) {
+        final y = (targetMinutes / 60.0) * TimelineUtils.hourHeight;
+        sc.animateTo(
+          (y - viewport / 2).clamp(0.0, TimelineUtils.totalHeight),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      } else if (isToday) {
         sc.animateTo(
           TimelineUtils.scrollOffsetForCurrentTime(viewport),
           duration: const Duration(milliseconds: 400),
@@ -1558,6 +1574,7 @@ class _UserEventPageState extends State<UserEventPage> {
       final target = widget.initialDayViewDate ?? DateTime.now();
       _dayViewDate = DateTime(target.year, target.month, target.day);
       _dayPageBaseDate = _dayViewDate;
+      _targetScrollMinutes = widget.initialDayViewScrollMinutes;
       WidgetsBinding.instance.addPostFrameCallback(
           (_) => _loadDayViewEvents(_dayViewDate));
     }

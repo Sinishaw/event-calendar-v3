@@ -2,4 +2,10 @@
 <resources>
     <color name="ic_launcher_background">#113766</color>
     <color name="splash_background">#FAFAFA</color>
+
+    <!-- Agenda widget (light theme). See values-night for the dark variants. -->
+    <color name="widget_bg">#FFFFFFFF</color>
+    <color name="widget_text_primary">#DE000000</color>
+    <color name="widget_text_secondary">#99000000</color>
+    <color name="widget_divider">#1F000000</color>
 </resources>
