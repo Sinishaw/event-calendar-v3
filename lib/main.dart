@@ -270,11 +270,14 @@ class App extends StatefulWidget {
   static FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   static FirebaseAnalyticsObserver observer = FirebaseAnalyticsObserver(analytics: analytics);
 
+  /// Root navigator, used to open widget deep links from the app-level observer.
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   State<App> createState() => _AppState();
 }
 
-class _AppState extends State<App> {
+class _AppState extends State<App> with WidgetsBindingObserver {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   @override
@@ -283,18 +286,40 @@ class _AppState extends State<App> {
     // match the group id in Runner.entitlements and DateWidget.entitlements.
     HomeWidget.setAppGroupId('group.com.example.eventCalendarV2');
     HomeWidget.registerBackgroundCallback(backgroundCallback);
+    // Observe route pushes so we can intercept iOS widget deep links before
+    // Flutter's default handler turns them into a (missing) named route. Added
+    // here (parent of MaterialApp) so this observer runs before WidgetsApp's.
+    WidgetsBinding.instance.addObserver(this);
     super.initState();
   }
 
   @override
   void didChangeDependencies() {
-    // Widget-tap routing is handled in _ContainerPageState (which has the
-    // navigator); nothing to wire here.
     super.didChangeDependencies();
+  }
+
+  /// iOS delivers home-screen widget taps (eventcalendarwidget://open/day|add)
+  /// through the route channel. Swallow them here (return true) and apply them
+  /// via [HomeWidgetService.pendingWidgetUri] so they never get pushed as a
+  /// route on top of the splash (which the splash would then replace with home).
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) async {
+    final uri = routeInformation.uri;
+    if (!_isWidgetLink(uri)) return false;
+    HomeWidgetService.pendingWidgetUri = uri;
+    // If the UI is ready (warm tap), open it now; otherwise ContainerPage
+    // consumes the pending link once it mounts (cold start, after the splash).
+    if (HomeWidgetService.appReady) {
+      final pending = HomeWidgetService.pendingWidgetUri;
+      HomeWidgetService.pendingWidgetUri = null;
+      if (pending != null) App.navigatorKey.currentState?.push(_widgetPageRoute(pending));
+    }
+    return true;
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _titleController.dispose();
     _messageController.dispose();
     super.dispose();
@@ -381,25 +406,12 @@ class _AppState extends State<App> {
           supportedLocales: AppLocalizations.supportedLocales,
           theme: themeProvider.currentTheme,
           locale: languageProvider.getCurrentLocale(),
+          navigatorKey: App.navigatorKey,
           navigatorObservers: <NavigatorObserver>[App.observer],
-          // The app boots at SplashScreen via onGenerateInitialRoutes (can't use
-          // `home:` alongside it). Home-screen widget deep links
-          // (eventcalendarwidget://open/day|add) arrive on iOS via the route
-          // channel. Cold start: always boot the splash and stash the link for
-          // ContainerPage to consume after init.
-          onGenerateInitialRoutes: (initialRoute) {
-            final uri = Uri.tryParse(initialRoute);
-            if (_isWidgetLink(uri)) HomeWidgetService.pendingWidgetUri = uri;
-            return [MaterialPageRoute(builder: (_) => const SplashScreen())];
-          },
-          // Warm: a widget tap pushes its route → open the target directly.
-          onGenerateRoute: (settings) {
-            final uri = Uri.tryParse(settings.name ?? '');
-            if (_isWidgetLink(uri)) return _widgetPageRoute(uri!);
-            return null;
-          },
-          onUnknownRoute: (settings) =>
-              MaterialPageRoute(builder: (_) => const SplashScreen()),
+          // Widget deep links are intercepted in _AppState.didPushRouteInformation
+          // and applied via pendingWidgetUri (see there), so the app just boots
+          // normally at the splash here.
+          home: const SplashScreen(),
         );
       },
     );
@@ -474,11 +486,14 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
     // available now that the app is running).
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshDateWidget());
 
+    // The UI is now ready, so widget deep links can be opened directly.
+    HomeWidgetService.appReady = true;
+
     // Home-screen widget taps.
     //  • Android: delivered here via home_widget's widgetClicked / launch.
-    //  • iOS (scene delegate): delivered via Flutter's route channel →
-    //    onGenerateRoute (warm) or onGenerateInitialRoutes → pendingWidgetUri
-    //    (cold), which we consume below.
+    //  • iOS (scene delegate): delivered via the route channel and captured in
+    //    _AppState.didPushRouteInformation → pendingWidgetUri, consumed below
+    //    (cold start, after the splash).
     HomeWidget.widgetClicked.listen((uri) {
       if (mounted && uri != null) _handleWidgetUri(uri);
     });
@@ -486,7 +501,7 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
       HomeWidget.initiallyLaunchedFromHomeWidget().then((uri) {
         if (mounted && uri != null) _handleWidgetUri(uri);
       });
-      // Cold-start widget link stashed during onGenerateInitialRoutes.
+      // Cold-start widget link stashed by _AppState before ContainerPage mounted.
       final pending = HomeWidgetService.pendingWidgetUri;
       if (pending != null) {
         HomeWidgetService.pendingWidgetUri = null;
@@ -521,6 +536,7 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
 
   @override
   void dispose() {
+    HomeWidgetService.appReady = false;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

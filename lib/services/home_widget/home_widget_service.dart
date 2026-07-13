@@ -60,6 +60,10 @@ class HomeWidgetService {
   /// start before the UI is ready; consumed by `ContainerPage` once mounted.
   static Uri? pendingWidgetUri;
 
+  /// True once `ContainerPage` is mounted (post-splash) — i.e. it's safe to
+  /// push a widget deep link. Used to defer cold-start links until after init.
+  static bool appReady = false;
+
   /// Keys read by `DateWidgetProvider.kt` (Android) and `DateWidget.swift` (iOS)
   /// via home_widget's shared store.
   static const String _keyDateEt = 'date_et';
