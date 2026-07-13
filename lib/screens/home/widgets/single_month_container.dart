@@ -403,7 +403,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
         bool isPrevMonthDays = index < activeStartIndex ? true : false;
         bool isNextMonthDays = index > activeStartIndex + (monthLength - 1) ? true : false;
         bool isPrevOrNextMonthDays = isPrevMonthDays || isNextMonthDays;
-        double etDayFontSize = isGeezNumbers ? 16 : 18;
+        double etDayFontSize = isGeezNumbers ? 18 : 20;
 
         FontWeight fontWeight;
         FontWeight gcFontWeight;
@@ -416,7 +416,7 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
             cellColor = (month > 1 || isNextMonthDays) ? Colors.grey.withOpacity(0.5) : Colors.transparent;
           }
         } else {
-          fontWeight = FontWeight.w700; // Bold Ethiopian day
+          fontWeight = FontWeight.w400; // Ethiopian day — regular (lighter, not bold)
           gcFontWeight = FontWeight.w400; // Regular Gregorian day
           if (isSunday) {
             cellColor = holidayColor;
