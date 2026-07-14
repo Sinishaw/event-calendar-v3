@@ -50,8 +50,9 @@ subprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         val javaCompileTask = project.tasks.withType<JavaCompile>().firstOrNull()
         if (javaCompileTask != null) {
-            kotlinOptions {
-                jvmTarget = javaCompileTask.targetCompatibility
+            compilerOptions {
+                jvmTarget.set(
+                    org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(javaCompileTask.targetCompatibility))
             }
         }
     }
