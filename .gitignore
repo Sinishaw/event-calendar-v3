@@ -33,6 +33,11 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# iOS SwiftPM — stale workspace-level lockfile (the canonical one is the
+# project-level ios/Runner.xcodeproj/project.xcworkspace/.../Package.resolved,
+# which Flutter maintains; this duplicate is pruned by tooling on every build)
+ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
 # Symbolication related
 app.*.symbols
 
