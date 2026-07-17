@@ -29,9 +29,7 @@ import 'firebase_options_dev.dart' as dev;
 import 'firebase_options_prod.dart' as prod;
 import 'screens/company/models/company_content_model.dart';
 import 'screens/events/models/notification_payload.dart';
-import 'screens/home/model/core_model.dart';
 import 'screens/topic/model/topic_model.dart';
-import 'shared/models/local_date_model.dart';
 import 'utils/firebase_logger.dart';
 import 'utils/utilities.dart';
 import 'screens/company/widgets/content_detail_page.dart';
@@ -105,45 +103,27 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 _saveLocalNotification(RemoteMessage message) {
   try {
-    int messageId = int.parse(message.data["id"]);
-    DateTime scheduleDate = DateTime.parse(message.data["markDate"]).toLocal();
-    LocalDate etScheduleDate =
-        MonthModel.toEc(year: scheduleDate.year, month: scheduleDate.month, day: scheduleDate.day)!;
+    final String? markDateStr = message.data["markDate"];
+    if (markDateStr == null) return;
+    final DateTime scheduleDate = DateTime.parse(markDateStr).toLocal();
 
-    NotificationPayload payload = NotificationPayload(
-        id: messageId,
-        title: message.data["title"],
-        body: message.data["body"],
-        createdDateTime: DateTime.now(),
-        scheduledDateTime: scheduleDate,
-        eventTagOption: EventTagOption.values
-            .firstWhere((e) => e.toString().split(".").last.toLowerCase() == message.data["tagColor"]),
-        repeatOption: NotificationRepeatOption.values
-            .firstWhere((e) => e.toString().split(".").last == message.data["repeatOption"]),
-        scheduleOption: NotificationScheduleOption.onTime,
-        gD: scheduleDate.day,
-        gM: scheduleDate.month,
-        gY: scheduleDate.year,
-        eD: etScheduleDate.day,
-        eM: etScheduleDate.month,
-        eY: etScheduleDate.year,
-        weekday: scheduleDate.weekday,
-        contentSource:
-            ContentSource.values.firstWhere((e) => e.toString().split(".").last == message.data["contentSource"]),
-        topic: message.data["topic"],
-        age: int.parse(message.data["age"]),
-        icon: message.data["logo"],
-        visible: "true");
-
-    String stringJsonPayload = json.encode(payload);
-
-    NotificationService().zonedScheduleNotification(
-        id: messageId,
-        date: scheduleDate,
-        title: message.data["title"],
-        body: message.data["body"],
-        payload: stringJsonPayload,
-        notificationSource: message.data["topic"]);
+    NotificationService().scheduleCalendarMark(
+      id: message.data["id"] ?? "",
+      markDate: scheduleDate,
+      title: message.data["title"],
+      body: message.data["body"],
+      tagColor: message.data["tagColor"],
+      // The FCM payload sends the age restriction under "ageRestriction", not "age".
+      ageRestriction: message.data["ageRestriction"],
+      topic: message.data["topic"],
+      icon: message.data["logo"],
+      contentSource: ContentSource.values.firstWhere(
+          (e) => e.toString().split(".").last == message.data["contentSource"],
+          orElse: () => ContentSource.CompanyEvent),
+      repeatOption: NotificationRepeatOption.values.firstWhere(
+          (e) => e.toString().split(".").last == message.data["repeatOption"],
+          orElse: () => NotificationRepeatOption.noRecurrence),
+    );
   } catch (e) {
     debugPrint("------ Error setting notification from fcm payload!");
     debugPrint(e.toString());
