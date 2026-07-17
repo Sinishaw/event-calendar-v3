@@ -4,6 +4,7 @@ import 'package:event_calendar_v2/common/constants.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/common/zoomable_image_dialog.dart';
 import 'package:event_calendar_v2/screens/company/models/company_content_model.dart';
+import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
 import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:event_calendar_v2/shared/models/local_date_model.dart';
@@ -23,6 +24,37 @@ class ContentDetailPage extends StatefulWidget {
   final int? index;
   final bool inAppDialogSource;
   final Function? callback;
+
+  /// Resolves the content behind a [NotificationPayload] (by its original content
+  /// id) and opens its detail page. Shared by the notification-tap handler and the
+  /// event-list rows so every entry point behaves identically. If the content
+  /// can't be resolved, [onNotFound] is invoked so the caller can fall back.
+  static Future<void> openFromPayload(
+    BuildContext context,
+    NotificationPayload payload, {
+    VoidCallback? onNotFound,
+  }) async {
+    final String lookupId = (payload.contentId != null && payload.contentId!.isNotEmpty)
+        ? payload.contentId!
+        : payload.id.toString();
+    final content = await CompanyContentModel().getContentById(lookupId);
+    if (!context.mounted) return;
+    if (content == null) {
+      onNotFound?.call();
+      return;
+    }
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => ContentDetailPage(
+          companyContentModel: content,
+          index: 0,
+          inAppDialogSource: false,
+        ),
+      ),
+    );
+  }
 
   @override
   State<ContentDetailPage> createState() => _ContentDetailPageState();

@@ -74,6 +74,27 @@ class CompanyContentModel {
     }
   }
 
+  /// Looks up a single content by its Firestore `id` across all companies/topics
+  /// (collection-group), cache-first then server. Used to open a content's detail
+  /// page from a notification tap or an event-list row.
+  Future<CompanyContentModel?> getContentById(String id) async {
+    try {
+      final query = FirebaseFirestore.instance
+          .collectionGroup(CONTENT_COLLECTION)
+          .where('id', isEqualTo: id)
+          .limit(1);
+      QuerySnapshot snap = await query.get(const GetOptions(source: Source.cache));
+      if (snap.docs.isEmpty) {
+        snap = await query.get(const GetOptions(source: Source.server));
+      }
+      if (snap.docs.isEmpty) return null;
+      final list = toModelList(snap.docs);
+      return list.isEmpty ? null : list.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<CompanyContentModel>> getCompanyContents(String company) async {
     List<QueryDocumentSnapshot> snapShotList = await _fireStore.getNestedRecords(
       ROOT_COLLECTION,

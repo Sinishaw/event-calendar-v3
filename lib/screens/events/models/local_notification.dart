@@ -338,6 +338,7 @@ class LocalNotification {
 
       NotificationPayload notificationPayload = NotificationPayload(
           id: pendingNotification.id,
+          contentId: payLoad.contentId,
           title: pendingNotification.title,
           body: pendingNotification.body,
           createdDateTime: payLoad.createdDateTime,

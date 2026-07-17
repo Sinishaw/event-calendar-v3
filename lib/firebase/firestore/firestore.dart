@@ -120,6 +120,8 @@ class CloudFireStore {
           querySnapshotCache.docs.add(element);
         }
         if (value.docs.isNotEmpty) Globals.prefs!.setString(Constants.ContentLastUpdatedTimeStamp, now.toString());
+      }).catchError((e) {
+        debugPrint("------ Firestore content refresh skipped (network unavailable): $e");
       });
     } else {
       firestore
@@ -134,6 +136,8 @@ class CloudFireStore {
           querySnapshotCache.docs.add(element);
         }
         if (value.docs.isNotEmpty) Globals.prefs!.setString(Constants.ContentLastUpdatedTimeStamp, now.toString());
+      }).catchError((e) {
+        debugPrint("------ Firestore content refresh skipped (network unavailable): $e");
       });
     }
   }

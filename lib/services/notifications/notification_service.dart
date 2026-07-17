@@ -444,6 +444,7 @@ class NotificationService {
 
       NotificationPayload notificationPayload = NotificationPayload(
         id: pendingNotification.id,
+        contentId: payLoad.contentId,
         title: pendingNotification.title,
         body: pendingNotification.body,
         createdDateTime: payLoad.createdDateTime,
@@ -533,6 +534,7 @@ class NotificationService {
 
     final NotificationPayload payload = NotificationPayload(
         id: notifId,
+        contentId: id,
         title: title,
         body: body,
         createdDateTime: DateTime.now(),

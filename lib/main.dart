@@ -85,7 +85,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         NotificationService().showNotification(
             title: message.data["title"],
             body: message.data["body"],
-            payload: "",
+            payload: _contentTapPayload(message),
             notificationSource: message.data["topic"]);
       }
     }
@@ -99,6 +99,33 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   } catch (e) {
     debugPrint("------ Error saving payload to local notification!");
   }
+}
+
+/// Builds the tap payload for the immediate "notify" notification so tapping it
+/// (from background/terminated) opens the content's detail page instead of home.
+/// Carries [contentId] + contentSource so `_handleNotificationTap` can route it.
+String _contentTapPayload(RemoteMessage message) {
+  final DateTime now = DateTime.now();
+  final NotificationPayload payload = NotificationPayload(
+    id: NotificationService.calendarMarkId(message.data["id"] ?? ""),
+    contentId: message.data["id"],
+    title: message.data["title"],
+    body: message.data["body"],
+    createdDateTime: now,
+    scheduledDateTime: now,
+    eventTagOption: EventTagOption.values.firstWhere(
+        (e) => e.toString().split(".").last.toLowerCase() == message.data["tagColor"],
+        orElse: () => EventTagOption.regular),
+    scheduleOption: NotificationScheduleOption.onTime,
+    repeatOption: NotificationRepeatOption.noRecurrence,
+    contentSource: ContentSource.values.firstWhere(
+        (e) => e.toString().split(".").last == message.data["contentSource"],
+        orElse: () => ContentSource.CompanyEvent),
+    topic: message.data["topic"],
+    icon: message.data["logo"],
+    visible: "true",
+  );
+  return json.encode(payload);
 }
 
 _saveLocalNotification(RemoteMessage message) {
@@ -585,28 +612,8 @@ class _ContainerPageState extends State<ContainerPage> with WidgetsBindingObserv
     }
   }
 
-  void _openContentDetail(NotificationPayload p) async {
-    try {
-      final company =
-          Globals.prefs!.getString(Constants.CompanyPreference) ?? Constants.DefaultCompany;
-      final content =
-          await CompanyContentModel().getCompanyContentById(company, p.id.toString());
-      if (!mounted) return;
-      if (content == null) {
-        _goHome();
-        return;
-      }
-      Navigator.of(context).push(PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, __, ___) => ContentDetailPage(
-          companyContentModel: content,
-          index: 0,
-          inAppDialogSource: false,
-        ),
-      ));
-    } catch (_) {
-      if (mounted) _goHome();
-    }
+  void _openContentDetail(NotificationPayload p) {
+    ContentDetailPage.openFromPayload(context, p, onNotFound: _goHome);
   }
 
   void _goHome() => setState(() => Globals.displayingIndex = 0);
