@@ -4,6 +4,7 @@ import 'package:event_calendar_v2/l10n/app_localizations.dart';import 'package:c
 import 'package:event_calendar_v2/common/geez_numbers.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/company/company_content.dart';
+import 'package:event_calendar_v2/screens/company/widgets/content_detail_page.dart';
 import 'package:event_calendar_v2/screens/events/models/fixed_national_events_detail.dart';
 import 'package:event_calendar_v2/screens/events/models/holiday_and_national_events.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
@@ -840,12 +841,12 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
             onTap: () {
               if (payload.contentSource == ContentSource.CompanyEvent ||
                   payload.contentSource == ContentSource.TopicEvent) {
-                Navigator.push(
+                ContentDetailPage.openFromPayload(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) {
-                      return const CompanyContentPage();
-                    },
+                  payload,
+                  onNotFound: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CompanyContentPage()),
                   ),
                 );
               }
