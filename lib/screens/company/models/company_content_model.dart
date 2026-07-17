@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:event_calendar_v2/common/constants.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/firebase/firestore/firestore.dart';
+import 'package:event_calendar_v2/services/notifications/notification_service.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
 import 'package:flutter/material.dart';
 
@@ -111,7 +112,58 @@ class CompanyContentModel {
       }
     }
     debugPrint("------ Active records Length: ${list.length}");
+
+    // Keep calendar marks in sync with the published state of content:
+    // published + markOnCalendar + future markDate -> ensure a mark exists;
+    // unpublished / unmarked / past -> cancel any lingering mark. Uses the full
+    // list (all statuses), not just the published subset, so decisions are made
+    // per-document rather than by absence. Fire-and-forget; self-guarded.
+    reconcileCalendarMarks(list);
+
     return listActive;
+  }
+
+  /// Reconciles scheduled calendar-mark notifications against content state.
+  /// Both the FCM path and this method key marks off [NotificationService.calendarMarkId],
+  /// so they converge on the same entry (no duplicates). Only cancels marks that
+  /// belong to content (never user tasks / national days).
+  Future<void> reconcileCalendarMarks(List<CompanyContentModel> all) async {
+    try {
+      final NotificationService service = NotificationService();
+      final pending = await service.getAllNotificationsList();
+      final DateTime now = DateTime.now();
+
+      for (final c in all) {
+        if (c.id == null) continue;
+        final int notifId = NotificationService.calendarMarkId(c.id);
+        final DateTime? markDate = c.markDate == null ? null : DateTime.tryParse(c.markDate!);
+        final bool published = c.status == RecordStatus.Published.index;
+        final bool shouldMark =
+            published && c.markOnCalendar == true && markDate != null && markDate.isAfter(now);
+
+        if (shouldMark) {
+          await service.scheduleCalendarMark(
+            id: c.id!,
+            markDate: markDate,
+            title: c.title,
+            body: c.body,
+            tagColor: c.tagColor,
+            ageRestriction: c.ageRestriction,
+            topic: c.topic,
+            icon: c.logoUrl,
+          );
+        } else {
+          final bool hasManagedMark = pending.any((p) =>
+              p.id == notifId &&
+              (p.contentSource == ContentSource.CompanyEvent ||
+                  p.contentSource == ContentSource.TopicEvent ||
+                  p.contentSource == ContentSource.GeneralEvent));
+          if (hasManagedMark) await service.cancelNotification(notifId);
+        }
+      }
+    } catch (e) {
+      debugPrint("------ Calendar mark reconciliation error: $e");
+    }
   }
 
   Future<List<CompanyContentModel>> getCompanyNationalDaysArticle(var company, var nationalDay) async {
@@ -129,8 +181,12 @@ class CompanyContentModel {
     List<CompanyContentModel> list = List.empty(growable: true);
     try {
       for (var doc in snapShotList) {
+        final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         DateTime frD = (doc['frD'] as Timestamp).toDate();
         DateTime toD = (doc['toD'] as Timestamp).toDate();
+        // markDate/markOnCalendar may be absent on older content docs, so read them null-safely.
+        final markDateField = data['markDate'];
+        final String? markDate = markDateField is Timestamp ? markDateField.toDate().toString() : null;
         debugPrint("------ Company To-Model-List Title: ${doc["title"]}: wUrl: ${doc["wUrl"]}");
         list.add(CompanyContentModel(
             id: doc["id"],
@@ -143,7 +199,13 @@ class CompanyContentModel {
             frD: frD.toString(),
             toD: toD.toString(),
             topic: doc["topic"],
-            status: doc["st"]));
+            status: doc["st"],
+            markOnCalendar: data['markOnCalendar'] == true,
+            markDate: markDate,
+            tagColor: data['tagColor'] as String?,
+            ageRestriction: data['ageRestriction']?.toString(),
+            source: data['source'] as String?,
+            category: data['category'] as String?));
       }
     } catch (e) {
       debugPrint(e.toString());

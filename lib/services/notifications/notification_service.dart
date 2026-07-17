@@ -8,8 +8,10 @@ import 'dart:typed_data';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:event_calendar_v2/common/globals.dart';
 import 'package:event_calendar_v2/screens/events/models/notification_payload.dart';
+import 'package:event_calendar_v2/screens/home/model/core_model.dart';
 import 'package:event_calendar_v2/screens/home/month_globals.dart';
 import 'package:event_calendar_v2/shared/enums.dart';
+import 'package:event_calendar_v2/shared/models/local_date_model.dart';
 import 'package:event_calendar_v2/shared/models/local_time_model.dart';
 import 'package:event_calendar_v2/utils/utilities.dart';
 import 'package:flutter/cupertino.dart';
@@ -501,5 +503,65 @@ class NotificationService {
 
   Future<void> cancelNotification(int id) async {
     await flutterLocalNotificationsPlugin.cancel(id);
+  }
+
+  /// Derives the 32-bit notification id used for a content's calendar mark.
+  /// Both the FCM path and the Firestore reconciliation path key off this, so
+  /// they converge on the same scheduled entry (no duplicates).
+  static int calendarMarkId(String? contentId) => (int.tryParse(contentId ?? "") ?? 0) & 0x7FFFFFFF;
+
+  /// Schedules (or replaces) a one-time calendar mark for a piece of content.
+  /// Reused by the FCM handlers and by content reconciliation so both produce
+  /// an identical entry keyed by [calendarMarkId].
+  Future<int> scheduleCalendarMark({
+    required String id,
+    required DateTime markDate,
+    String? title,
+    String? body,
+    String? tagColor,
+    String? ageRestriction,
+    String? topic,
+    String? icon,
+    ContentSource contentSource = ContentSource.CompanyEvent,
+    NotificationRepeatOption repeatOption = NotificationRepeatOption.noRecurrence,
+  }) async {
+    final int notifId = calendarMarkId(id);
+    final DateTime scheduleDate = markDate.toLocal();
+    final LocalDate? etScheduleDate =
+        MonthModel.toEc(year: scheduleDate.year, month: scheduleDate.month, day: scheduleDate.day);
+    if (etScheduleDate == null) return notifId;
+
+    final NotificationPayload payload = NotificationPayload(
+        id: notifId,
+        title: title,
+        body: body,
+        createdDateTime: DateTime.now(),
+        scheduledDateTime: scheduleDate,
+        eventTagOption: EventTagOption.values.firstWhere(
+            (e) => e.toString().split(".").last.toLowerCase() == tagColor,
+            orElse: () => EventTagOption.regular),
+        repeatOption: repeatOption,
+        scheduleOption: NotificationScheduleOption.onTime,
+        gD: scheduleDate.day,
+        gM: scheduleDate.month,
+        gY: scheduleDate.year,
+        eD: etScheduleDate.day,
+        eM: etScheduleDate.month,
+        eY: etScheduleDate.year,
+        weekday: scheduleDate.weekday,
+        contentSource: contentSource,
+        topic: topic,
+        age: int.tryParse(ageRestriction ?? "") ?? 0,
+        icon: icon,
+        visible: "true");
+
+    await zonedScheduleNotification(
+        id: notifId,
+        date: scheduleDate,
+        title: title,
+        body: body,
+        payload: json.encode(payload),
+        notificationSource: topic);
+    return notifId;
   }
 }
