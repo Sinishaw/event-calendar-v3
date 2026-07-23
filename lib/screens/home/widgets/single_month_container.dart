@@ -622,9 +622,10 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios, color: c),
-            onPressed: () {
+          _monthNavButton(
+            icon: Icons.chevron_left_rounded,
+            color: c,
+            onTap: () {
               isTapFromMonthPicker = false;
               _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
             },
@@ -640,17 +641,40 @@ class _SingleMonthContainerState extends State<SingleMonthContainer> with MonthC
               ),
             ),
           ),
-          IconButton(
-            icon: Icon(
-              Icons.arrow_forward_ios,
-              color: c,
-            ),
-            onPressed: () {
+          _monthNavButton(
+            icon: Icons.chevron_right_rounded,
+            color: c,
+            onTap: () {
               isTapFromMonthPicker = false;
               _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
             },
-          )
+          ),
         ],
+      ),
+    );
+  }
+
+  /// A month-navigation arrow: a rounded chevron inside a soft circular tinted
+  /// button.
+  Widget _monthNavButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.08),
+          ),
+          child: Icon(icon, color: color, size: 26),
+        ),
       ),
     );
   }
