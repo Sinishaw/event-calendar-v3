@@ -55,42 +55,55 @@ mixin MonthCallables {
 
   Widget monthHeader(BuildContext context) {
     String weekStartDay = Utility.getWeekStartDay();
-    Color color = Theme.of(context).primaryColor.withOpacity(0.2);
-    TextStyle ts = TextStyle(color: Theme.of(context).primaryColor);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2.0),
-      child: Container(
-        decoration: BoxDecoration(
-            color: color,
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).primaryColor,
-                width: 0.5,
+    final Color primary = Theme.of(context).primaryColor;
+    final loc = AppLocalizations.of(context)!;
+
+    Widget label(String text, {bool weekend = false}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5.0),
+          child: Center(
+            child: Text(
+              text.toUpperCase(),
+              style: TextStyle(
+                color: primary.withOpacity(weekend ? 0.45 : 0.6),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
               ),
-            )),
-        child: Table(
-          children: [
-            weekStartDay == 'Mon'
-                ? TableRow(children: [
-                    Center(child: Text(AppLocalizations.of(context)!.mon, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.tue, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.wed, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.thu, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.fri, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.sat, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.sun, style: ts))
-                  ])
-                : TableRow(children: [
-                    Center(child: Text(AppLocalizations.of(context)!.sun, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.mon, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.tue, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.wed, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.thu, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.fri, style: ts)),
-                    Center(child: Text(AppLocalizations.of(context)!.sat, style: ts)),
-                  ])
-          ],
+            ),
+          ),
+        );
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: primary.withOpacity(0.08),
+            width: 1,
+          ),
         ),
+      ),
+      child: Table(
+        children: [
+          weekStartDay == 'Mon'
+              ? TableRow(children: [
+                  label(loc.mon),
+                  label(loc.tue),
+                  label(loc.wed),
+                  label(loc.thu),
+                  label(loc.fri),
+                  label(loc.sat, weekend: true),
+                  label(loc.sun, weekend: true),
+                ])
+              : TableRow(children: [
+                  label(loc.sun, weekend: true),
+                  label(loc.mon),
+                  label(loc.tue),
+                  label(loc.wed),
+                  label(loc.thu),
+                  label(loc.fri),
+                  label(loc.sat, weekend: true),
+                ])
+        ],
       ),
     );
   }
